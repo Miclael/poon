@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📱 手機掃碼輸入</title>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body {
@@ -14,6 +14,10 @@
             max-width: 420px; /* 限制主內容寬度 */
             margin: auto;
             background: #f8f8f8;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #222;
         }
         label {
             font-weight: bold;
@@ -30,25 +34,33 @@
         .input-container {
             flex: 1;
         }
-        .input-container input {
+        .input-container input, select#defect-select {
             padding: 10px;
             font-size: 16px;
             width: 100%;
             box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
         .char-count {
             font-size: 12px;
             color: #555;
             text-align: right;
+            margin-top: 4px;
         }
         .input-row button, .copy-btn {
-            padding: 10px;
+            padding: 10px 15px;
             font-size: 16px;
             background: #007BFF;
             color: white;
             border: none;
             border-radius: 6px;
             white-space: nowrap; /* 防止按鈕文字換行 */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .input-row button:hover, .copy-btn:hover {
+            background: #0056b3;
         }
         .copy-btn {
             width: 100%;
@@ -58,7 +70,6 @@
         .copy-btn:hover {
             background: #218838;
         }
-
         #result, #history {
             background: #fff;
             border: 1px dashed #999;
@@ -67,34 +78,61 @@
             font-size: 16px;
             white-space: pre-line; /* 保留換行符 */
             min-height: 50px; /* 最小高度 */
+            border-radius: 4px;
+        }
+        #history h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        #history ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #history li {
+            background: #f1f1f1;
+            margin-bottom: 5px;
+            padding: 8px;
+            border-radius: 4px;
+            word-break: break-all; /* 防止長文字溢出 */
         }
 
         /* 掃描器疊加層樣式 */
         #scanner-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85); /* 更深的背景 */
             display: none; /* 預設隱藏 */
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
         }
         #reader {
             width: 300px; /* 掃描區域寬度 */
             max-width: 90%;
-            height: auto; /* 高度自動調整 */
+            height: auto;
             aspect-ratio: 3 / 4; /* 強制為直向比例 */
             background-color: black; /* 掃描區域背景色 */
+            border: 2px solid white; /* 讓掃描框更明顯 */
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
         }
         #close-btn {
-            margin-top: 10px;
-            padding: 10px 20px;
+            margin-top: 20px; /* 增加與掃描區域的距離 */
+            padding: 12px 25px;
             background: #dc3545; /* 紅色關閉按鈕 */
             color: #fff;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #close-btn:hover {
+            background: #c82333;
         }
 
         /* 彈窗樣式 */
@@ -116,44 +154,44 @@
         #defectModal input {
             width: 100%;
             padding: 14px 10px;
-            font-size: 20px;
+            font-size: 18px; /* 字體稍微小一點 */
             box-sizing: border-box;
             margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
         #defectModal button {
-            font-size: 18px;
+            font-size: 16px; /* 字體稍微小一點 */
             padding: 12px 0;
             width: 48%; /* 調整按鈕寬度 */
             border: none;
             border-radius: 8px;
             margin: 2% 1%; /* 調整間距 */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
         }
         #defectModal button:first-child {
             background: #17a34a; /* 儲存按鈕綠色 */
             color: #fff;
         }
+        #defectModal button:first-child:hover {
+            background: #148f3e;
+        }
         #defectModal button:last-child {
             background: #999; /* 取消按鈕灰色 */
             color: #fff;
+        }
+        #defectModal button:last-child:hover {
+            background: #777;
         }
         #modalOverlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.3);
-            z-index: 9999; /* 高於掃描層，但低於彈窗本身 */
+            background: rgba(0,0,0,0.4); /* 更深的疊加層 */
+            z-index: 9998; /* 低於彈窗本身，高於掃描層 */
         }
         
-        select#defect-select {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-        }
-
         /* 手機響應式調整 */
         @media (max-width: 600px) {
             #defectModal {
@@ -162,10 +200,10 @@
                 padding: 16px 4vw;
             }
             #defectModal input {
-                font-size: 20px;
+                font-size: 18px;
             }
             #defectModal button {
-                font-size: 20px;
+                font-size: 18px;
                 width: 48%;
             }
         }
@@ -204,6 +242,7 @@
     <input id="big" inputmode="numeric" oninput="handleInput('big')" pattern="[0-9]*"/>
   </div>
 </div>
+<h3 style="text-align:center;margin-top:20px;margin-bottom:10px;">顯示結果</h3>
 <div id="result"></div>
 <button class="copy-btn" onclick="copyResult()">📋 複製顯示內容</button>
 <h3>📜 掃描紀錄</h3>
@@ -246,10 +285,12 @@
   }
 
   function handleInput(id) {
-    const val = document.getElementById(id).value;
-    const count = document.getElementById(id + "-count");
-    if (count) count.innerText = val.length + " / " + document.getElementById(id).maxLength; // 使用 maxLength
-    localStorage.setItem(id, val);
+    const inputElement = document.getElementById(id);
+    const countElement = document.getElementById(id + "-count");
+    if (countElement) {
+        countElement.innerText = inputElement.value.length + " / " + inputElement.maxLength;
+    }
+    localStorage.setItem(id, inputElement.value);
     updateDisplay();
   }
 
@@ -277,7 +318,7 @@
   }
 
   function startScan(id) {
-    // 確保每次開始掃描前停止 QuaggaJS 並移除事件
+    // 每次啟動前，確保 QuaggaJS 停止並移除所有監聽器
     stopScan(); 
     currentField = id;
     document.getElementById("scanner-overlay").style.display = "flex";
@@ -305,8 +346,8 @@
           "codabar_reader",
           "i2of5_reader", // Interleaved 2 of 5
           "2of5_reader", // Standard 2 of 5
-          "databar_reader",
-          "databar_expanded_reader"
+          // "databar_reader", // 可選，如果需要 Databar
+          // "databar_expanded_reader" // 可選，如果需要 Databar Expanded
         ],
         multiple: false // 只讀取一個條碼
       },
@@ -314,11 +355,18 @@
     }, function(err) {
       if (err) {
         console.error("QuaggaJS 初始化失敗: ", err);
-        alert("相機開啟失敗：" + (err.message || err));
+        let errorMessage = "相機開啟失敗。請檢查：\n1. 您的瀏覽器是否支援相機。\n2. 您是否允許了相機權限。\n3. 您是否正在使用 HTTPS (部分瀏覽器要求)。";
+        if (err.name === "NotAllowedError") {
+            errorMessage = "相機權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
+        } else if (err.name === "NotFoundError" || err.name === "OverconstrainedError") {
+            errorMessage = "找不到相機裝置或無法滿足相機要求。請確認相機已連接或未被其他應用程式占用。";
+        }
+        alert(errorMessage);
         document.getElementById("scanner-overlay").style.display = "none";
         return;
       }
       Quagga.start();
+      console.log("QuaggaJS 已啟動！");
     });
 
     Quagga.onDetected(function(result) {
@@ -333,16 +381,14 @@
 
             // 停止掃描並關閉疊加層
             stopScan();
-            // Quagga.offDetected(); // 在 stopScan 中處理，避免重複呼叫
         }
     });
 
     // 處理 QuaggaJS 錯誤事件
     Quagga.onImageProcessed(function(result) {
         // 這是一個可選的回調，用於調試。可以查看處理後的影像。
-        // if (result && result.box) {
-        //     // console.log("Barcode box:", result.box);
-        // }
+        // 如果需要視覺化條碼定位框，可以在這裡繪製
+        // 例如：Quagga.canvas.ctx.fillStyle = "red"; Quagga.canvas.ctx.fillRect(result.box[0], result.box[1], result.box[2], result.box[3]);
     });
   }
 
@@ -351,7 +397,8 @@
       Quagga.stop();
       // 移除事件監聽器以避免在下次啟動時重複觸發
       Quagga.offDetected();
-      // Quagga.offImageProcessed(); // 如果有監聽此事件也移除
+      // 如果有其他監聽器，也應在此處移除，例如：
+      // Quagga.offProcessed();
     }
     document.getElementById("scanner-overlay").style.display = "none";
   }
@@ -450,17 +497,20 @@
   function renderHistory() {
     const logs = getLocalStorageItem("scanHistory", "[]");
     const wrap = document.getElementById("history");
+    wrap.innerHTML = ''; // 清空現有內容
+
     if (logs.length === 0) {
-        wrap.innerHTML = "<p>尚無掃描紀錄。</p>";
+        wrap.innerHTML = "<p style='text-align: center; color: #777;'>尚無掃描紀錄。</p>";
         return;
     }
     // 使用 ul/li 列表顯示歷史紀錄
-    let historyHtml = '<ul>';
+    let historyList = document.createElement('ul');
     logs.forEach(log => {
-        historyHtml += `<li>[${log.time}] ${log.field.toUpperCase()}：${log.text}</li>`;
+        const listItem = document.createElement('li');
+        listItem.textContent = `[${log.time}] ${log.field.toUpperCase()}：${log.text}`;
+        historyList.appendChild(listItem);
     });
-    historyHtml += '</ul>';
-    wrap.innerHTML = historyHtml;
+    wrap.appendChild(historyList);
   }
 
   window.onload = () => {
