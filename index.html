@@ -1,544 +1,63 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📱 手機掃碼輸入</title>
-
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <style>
-        body {
-            font-family: Arial; /* 修改為較常見字體 */
-            padding: 12px;
-            line-height: 1.6;
-            max-width: 420px; /* 限制主內容寬度 */
-            margin: auto;
-            background: #f8f8f8;
-            color: #333;
-        }
-        h1, h2, h3 {
-            color: #222;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 16px;
-            font-size: 16px;
-        }
-        .input-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px; /* 增加間距 */
-        }
-        .input-container {
-            flex: 1;
-        }
-        .input-container input, select#defect-select {
-            padding: 10px;
-            font-size: 16px;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .char-count {
-            font-size: 12px;
-            color: #555;
-            text-align: right;
-            margin-top: 4px;
-        }
-        .input-row button, .copy-btn {
-            padding: 10px 15px;
-            font-size: 16px;
-            background: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            white-space: nowrap; /* 防止按鈕文字換行 */
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .input-row button:hover, .copy-btn:hover {
-            background: #0056b3;
-        }
-        .copy-btn {
-            width: 100%;
-            margin-top: 10px;
-            background: #28a745; /* 複製按鈕綠色 */
-        }
-        .copy-btn:hover {
-            background: #218838;
-        }
-        #result, #history {
-            background: #fff;
-            border: 1px dashed #999;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 16px;
-            white-space: pre-line; /* 保留換行符 */
-            min-height: 50px; /* 最小高度 */
-            border-radius: 4px;
-        }
-        #history h3 {
-            margin-top: 20px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        #history ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        #history li {
-            background: #f1f1f1;
-            margin-bottom: 5px;
-            padding: 8px;
-            border-radius: 4px;
-            word-break: break-all; /* 防止長文字溢出 */
-        }
-
-        /* 掃描器疊加層樣式 */
-        #scanner-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85); /* 更深的背景 */
-            display: none; /* 預設隱藏 */
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        #reader {
-            width: 300px; /* 掃描區域寬度 */
-            max-width: 90%;
-            height: auto;
-            aspect-ratio: 3 / 4; /* 強制為直向比例 */
-            background-color: black; /* 掃描區域背景色 */
-            border: 2px solid white; /* 讓掃描框更明顯 */
-            box-shadow: 0 0 15px rgba(255,255,255,0.5);
-        }
-        #close-btn {
-            margin-top: 20px; /* 增加與掃描區域的距離 */
-            padding: 12px 25px;
-            background: #dc3545; /* 紅色關閉按鈕 */
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        #close-btn:hover {
-            background: #c82333;
-        }
-
-        /* 彈窗樣式 */
-        #defectModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #fff;
-            border: 2px solid #444;
-            padding: 24px 16px;
-            z-index: 10000; /* 高於掃描層 */
-            box-shadow: 0 0 12px rgba(0,0,0,0.25);
-            width: 92vw;
-            max-width: 400px;
-            border-radius: 12px;
-        }
-        #defectModal input {
-            width: 100%;
-            padding: 14px 10px;
-            font-size: 18px; /* 字體稍微小一點 */
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        #defectModal button {
-            font-size: 16px; /* 字體稍微小一點 */
-            padding: 12px 0;
-            width: 48%; /* 調整按鈕寬度 */
-            border: none;
-            border-radius: 8px;
-            margin: 2% 1%; /* 調整間距 */
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        #defectModal button:first-child {
-            background: #17a34a; /* 儲存按鈕綠色 */
-            color: #fff;
-        }
-        #defectModal button:first-child:hover {
-            background: #148f3e;
-        }
-        #defectModal button:last-child {
-            background: #999; /* 取消按鈕灰色 */
-            color: #fff;
-        }
-        #defectModal button:last-child:hover {
-            background: #777;
-        }
-        #modalOverlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.4); /* 更深的疊加層 */
-            z-index: 9998; /* 低於彈窗本身，高於掃描層 */
-        }
-        
-        /* 手機響應式調整 */
-        @media (max-width: 600px) {
-            #defectModal {
-                width: 98vw;
-                max-width: 96vw;
-                padding: 16px 4vw;
-            }
-            #defectModal input {
-                font-size: 18px;
-            }
-            #defectModal button {
-                font-size: 18px;
-                width: 48%;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>GitHub 上傳工具</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, textarea, button { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+  </style>
 </head>
 <body>
-<h2 style="text-align:center;">📱 手機掃碼輸入</h2>
-<label>料號</label>
-<div class="input-row">
-  <div class="input-container">
-    <input id="pn" maxlength="20" oninput="handleInput('pn')"/>
-    <div class="char-count" id="pn-count">0 / 20</div>
-  </div>
-  <button onclick="startScan('pn')">掃描</button>
-</div>
-<label>製令</label>
-<div class="input-row">
-  <div class="input-container">
-    <input id="mo" maxlength="20" oninput="handleInput('mo')"/>
-    <div class="char-count" id="mo-count">0 / 20</div>
-  </div>
-  <button onclick="startScan('mo')">掃描</button>
-</div>
-<label>缺點</label>
-<select id="defect-select" onchange="updateDisplay()"></select>
-<div style="display:flex;gap:10px;margin-top:10px;">
-  <button class="copy-btn" onclick="openModal()" style="background:#007BFF;">➕ 新增缺點</button>
-  <button class="copy-btn" onclick="deleteDefect()" style="background:#dc3545;">🗑️ 刪除缺點</button>
-</div>
-<div class="input-row" style="margin-top:10px;">
-  <div class="input-container">
-    <label>單報</label>
-    <input id="spnl" inputmode="numeric" oninput="handleInput('spnl')" pattern="[0-9]*"/>
-  </div>
-  <div class="input-container">
-    <label>大報</label>
-    <input id="big" inputmode="numeric" oninput="handleInput('big')" pattern="[0-9]*"/>
-  </div>
-</div>
-<h3 style="text-align:center;margin-top:20px;margin-bottom:10px;">顯示結果</h3>
-<div id="result"></div>
-<button class="copy-btn" onclick="copyResult()">📋 複製顯示內容</button>
-<h3>📜 掃描紀錄</h3>
-<div id="history"></div>
-<div id="scanner-overlay">
-  <div id="reader"></div>
-  <button id="close-btn" onclick="stopScan()">❌ 關閉相機</button>
-</div>
-<div id="defectModal">
-  <h3 style="text-align:center;margin-top:0;">新增缺點</h3>
-  <input id="newDefectInput" placeholder="請輸入缺點名稱" type="text" />
-  <div style="display:flex;justify-content:space-between;margin-top:16px;">
-    <button onclick="saveDefect()">✅ 儲存</button>
-    <button onclick="closeModal()">❌ 取消</button>
-  </div>
-</div>
-<div id="modalOverlay" onclick="closeModal()"></div>
-<script>
-  let currentField = null; // 當前掃描目標欄位
-  const MAX_HISTORY = 5; // 歷史紀錄最大數量
-  let html5QrcodeScanner = null; // Html5QrcodeScanner 實例 (注意變數名稱改變)
+  <h2>📤 GitHub 檔案上傳工具</h2>
+  <label>GitHub Token：</label>
+  <input type="password" id="token" placeholder="輸入你的 GitHub Token">
 
-  // 輔助函式：取得並解析 localStorage 資料
-  function getLocalStorageItem(key, defaultValue = '[]') {
-      try {
-          const item = localStorage.getItem(key);
-          return item ? JSON.parse(item) : JSON.parse(defaultValue);
-      } catch (e) {
-          console.error(`Error parsing localStorage item "${key}":`, e);
-          return JSON.parse(defaultValue);
-      }
-  }
+  <label>儲存庫名稱（使用者/儲存庫）：</label>
+  <input type="text" id="repo" placeholder="例如：miclael/test-repo">
 
-  // 輔助函式：設定 localStorage 資料
-  function setLocalStorageItem(key, value) {
-      try {
-          localStorage.setItem(key, JSON.stringify(value));
-      } catch (e) {
-          console.error(`Error setting localStorage item "${key}":`, e);
-      }
-  }
+  <label>檔案名稱（含副檔名）：</label>
+  <input type="text" id="filename" placeholder="例如：test.txt">
 
-  function handleInput(id) {
-    const inputElement = document.getElementById(id);
-    const countElement = document.getElementById(id + "-count");
-    if (countElement) {
-        countElement.innerText = inputElement.value.length + " / " + inputElement.maxLength;
-    }
-    localStorage.setItem(id, inputElement.value);
-    updateDisplay();
-  }
+  <label>檔案內容：</label>
+  <textarea id="content" rows="10" placeholder="在此輸入檔案內容..."></textarea>
 
-  function updateDisplay() {
-    const pn = document.getElementById("pn").value;
-    const mo = document.getElementById("mo").value;
-    const defect = document.getElementById("defect-select").value || "";
-    const spnl = document.getElementById("spnl").value;
-    const big = document.getElementById("big").value;
+  <button onclick="uploadFile()">📤 上傳檔案到 GitHub</button>
 
-    let lines = [];
-    if (pn) lines.push(pn);
-    // 製令格式化，如果製令有值且長度超過11，則截斷並加短槓
-    const moFmt = mo ? (mo.length > 11 ? (mo.slice(0,10) + "-" + mo.slice(-1)) : mo) : "";
-    if (moFmt) lines.push(moFmt);
-    
-    if (defect) {
-      let line = defect;
-      if (spnl) line += ` 單報${spnl}spnl`;
-      if (big) line += ` 大報${big}片`;
-      lines.push(line);
-    }
-    lines.push("請派員確認");
-    document.getElementById("result").innerText = lines.join("\n");
-  }
+  <pre id="result"></pre>
 
-  function startScan(id) {
-    alert("掃描按鈕已點擊，正在嘗試啟動相機..."); // 診斷用 alert
+  <script>
+    async function uploadFile() {
+      const token = document.getElementById("token").value;
+      const repo = document.getElementById("repo").value;
+      const filename = document.getElementById("filename").value;
+      const content = document.getElementById("content").value;
+      const result = document.getElementById("result");
 
-    stopScan(); // 確保停止任何現有掃描器
-    currentField = id;
-    document.getElementById("scanner-overlay").style.display = "flex";
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/${filename}`;
 
-    // 步驟 1: 先列舉可用的相機
-    Html5Qrcode.getCameras().then(devices => {
-      if (devices && devices.length) {
-        // 嘗試找到後置鏡頭 (environment facing mode)
-        const backCamera = devices.find(device => 
-          device.label.toLowerCase().includes('back') || 
-          device.label.toLowerCase().includes('environment')
-        );
-        let cameraId = backCamera ? backCamera.id : devices[0].id; // 如果找不到後置，則使用第一個相機
+      const body = {
+        message: `Upload ${filename}`,
+        content: btoa(unescape(encodeURIComponent(content)))
+      };
 
-        // 實例化 Html5QrcodeScanner (注意這裡的改動)
-        html5QrcodeScanner = new Html5QrcodeScanner(
-          "reader", // 綁定到 id 為 "reader" 的元素
-          { 
-            fps: 10, // 每秒偵測幀數
-            qrbox: {width: 300, height: 100}, // 掃描框優化為一維條碼（寬高比）
-            rememberLastUsedCamera: true, // 記住上次使用的相機
-            videoConstraints: { // 使用找到的相機 ID
-              deviceId: { exact: cameraId },
-            },
-            formatsToScan: [ // 指定要掃描的一維條碼格式（重點改進）
-              Html5QrcodeSupportedFormats.CODE_128,
-              Html5QrcodeSupportedFormats.CODE_39,
-              Html5QrcodeSupportedFormats.EAN_13,
-              Html5QrcodeSupportedFormats.EAN_8,
-              Html5QrcodeSupportedFormats.UPC_A,
-              Html5QrcodeSupportedFormats.UPC_E,
-              Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
-              Html5QrcodeSupportedFormats.CODABAR,
-              // 如果也有二維碼需求，可以保留以下格式，否則可移除以提高專一性
-              Html5QrcodeSupportedFormats.AZTEC, 
-              Html5QrcodeSupportedFormats.DATA_MATRIX, 
-              Html5QrcodeSupportedFormats.QR_CODE, // 保留 QR Code 以防萬一
-            ]
-          },
-          /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息
-        );
-
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-
-      } else {
-        onScanFailure("Html5Qrcode.getCameras: 找不到任何相機裝置。"); // 沒有找到相機
-      }
-    }).catch(err => {
-      onScanFailure("Html5Qrcode.getCameras 獲取相機設備失敗: " + String(err.message || err)); // 獲取相機列表失敗
-    });
-  }
-
-  function onScanSuccess(decodedText, decodedResult) {
-    console.log(`Scan result: ${decodedText}`, decodedResult); // 會記錄到控制台
-    const scannedCode = decodedText.substring(0, 15); // 取前 15 碼
-    document.getElementById(currentField).value = scannedCode;
-    localStorage.setItem(currentField, scannedCode);
-    saveHistory(currentField, scannedCode);
-    
-    handleInput(currentField); 
-    stopScan();
-  }
-
-  function onScanFailure(error) {
-    // 錯誤通常會在此處被捕獲。請您留意是否有彈窗。
-    console.warn(`Scanner error: ${error}`); // 會記錄到控制台
-    let errorMessage = "相機開啟失敗。";
-    if (String(error).includes("NotAllowedError") || String(error).includes("Permission denied")) {
-        errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
-    } else if (String(error).includes("NotFoundException") || String(error).includes("No camera found")) {
-        errorMessage += "找不到相機裝置。請確認相機已連接或未被其他應用程式占用。";
-    } else if (String(error).includes("NotReadableError") || String(error).includes("TrackStartError")) {
-        errorMessage += "相機無法讀取或已在使用中。請確認相機未被其他應用程式占用。";
-    } else if (String(error).includes("OverconstrainedError")) {
-        errorMessage += "相機要求過於嚴格。請嘗試更新瀏覽器或設備驅動。";
-    } else {
-        errorMessage += "發生未知錯誤：" + String(error); // 確保錯誤訊息可讀
-    }
-    alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
-    document.getElementById("scanner-overlay").style.display = "none";
-  }
-
-  function stopScan() {
-    // 停止掃描器 (注意這裡現在是 html5QrcodeScanner)
-    if (html5QrcodeScanner && html5QrcodeScanner.getState() !== Html5QrcodeScanner.State.NOT_STARTED) {
-      html5QrcodeScanner.clear().then(() => {
-        console.log("Html5QrcodeScanner 已停止。");
-      }).catch((err) => {
-        console.error("Html5QrcodeScanner 停止失敗: ", err);
+      const res = await fetch(apiUrl, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json"
+        },
+        body: JSON.stringify(body)
       });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        result.textContent = `✅ 上傳成功！網址：\n${data.content.html_url}`;
+      } else {
+        result.textContent = `❌ 發生錯誤：\n${JSON.stringify(data, null, 2)}`;
+      }
     }
-    document.getElementById("scanner-overlay").style.display = "none";
-  }
-
-  function copyResult() {
-    const text = document.getElementById("result").innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        alert("✅ 已複製");
-    }).catch(err => {
-        console.error("複製失敗: ", err);
-        alert("❌ 複製失敗，請手動複製。");
-    });
-  }
-
-  // 缺點管理（下拉與localStorage）
-  function loadDefects(selected = "") {
-    const select = document.getElementById("defect-select");
-    select.innerHTML = ""; // 清空現有選項
-
-    // 確保有預設選項
-    const defaultOpt = document.createElement("option");
-    defaultOpt.value = "";
-    defaultOpt.text = "-- 請選擇 --";
-    select.appendChild(defaultOpt);
-
-    let list = getLocalStorageItem("defects", "[]"); // 從 localStorage 載入缺點列表
-
-    list.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item;
-      opt.text = item;
-      if (item === selected) opt.selected = true;
-      select.appendChild(opt);
-    });
-    updateDisplay(); // 確保下拉選單更新後，結果也更新
-  }
-
-  function deleteDefect() {
-    const sel = document.getElementById("defect-select");
-    const val = sel.value;
-    if (!val) {
-        return alert("請選擇要刪除的缺點！");
-    }
-    if (!confirm(`確定要刪除缺點：「${val}」嗎？`)) {
-        return;
-    }
-    let list = getLocalStorageItem("defects", "[]");
-    list = list.filter(x => x !== val);
-    setLocalStorageItem("defects", list); // 儲存更新後的列表
-    loadDefects(); // 重新載入下拉選單
-  }
-
-  function saveDefect() {
-    const newDefect = document.getElementById('newDefectInput').value.trim();
-    if (!newDefect) {
-        return alert('請輸入缺點名稱');
-    }
-    let list = getLocalStorageItem("defects", "[]");
-    if (!list.includes(newDefect)) { // 檢查是否已存在
-      list.push(newDefect);
-      setLocalStorageItem("defects", list); // 儲存更新後的列表
-    }
-    
-    // 將新增加的缺點設定為選中狀態
-    loadDefects(newDefect); 
-    closeModal();
-    updateDisplay();
-  }
-
-  function openModal() {
-    document.getElementById('defectModal').style.display = 'block';
-    document.getElementById('modalOverlay').style.display = 'block';
-    document.getElementById('newDefectInput').value = ''; // 清空輸入框
-    setTimeout(() => {
-      document.getElementById('newDefectInput').focus();
-    }, 150);
-  }
-
-  function closeModal() {
-    document.getElementById('defectModal').style.display = 'none';
-    document.getElementById('modalOverlay').style.display = 'none';
-  }
-
-  function saveHistory(field, text) {
-    const time = new Date().toLocaleString('zh-TW', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
-    let logs = getLocalStorageItem("scanHistory", "[]");
-    logs.unshift({ time, field, text }); // 新的紀錄放在最前面
-    if (logs.length > MAX_HISTORY) logs = logs.slice(0, MAX_HISTORY); // 只保留最新 N 筆
-    setLocalStorageItem("scanHistory", logs);
-    renderHistory();
-  }
-
-  function renderHistory() {
-    const logs = getLocalStorageItem("scanHistory", "[]");
-    const wrap = document.getElementById("history");
-    wrap.innerHTML = ''; // 清空現有內容
-
-    if (logs.length === 0) {
-        wrap.innerHTML = "<p style='text-align: center; color: #777;'>尚無掃描紀錄。</p>";
-        return;
-    }
-    // 使用 ul/li 列表顯示歷史紀錄
-    let historyList = document.createElement('ul');
-    logs.forEach(log => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `[${log.time}] ${log.field.toUpperCase()}：${log.text}`;
-        historyList.appendChild(listItem);
-    });
-    wrap.appendChild(historyList);
-  }
-
-  window.onload = () => {
-    // 載入 localStorage 中儲存的資料
-    ["pn", "mo", "spnl", "big"].forEach(id => {
-      document.getElementById(id).value = localStorage.getItem(id) || "";
-      handleInput(id); // 初始化字元計數和顯示
-    });
-    
-    loadDefects(); // 載入缺點選單
-    renderHistory(); // 渲染歷史紀錄
-
-    // 監聽缺點選擇變化，立即更新顯示
-    document.getElementById("defect-select").addEventListener("change", updateDisplay);
-  };
-</script>
+  </script>
 </body>
 </html>
