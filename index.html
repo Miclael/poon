@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📱 手機掃碼輸入</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body {
             font-family: Arial; /* 修改為較常見字體 */
@@ -264,6 +264,7 @@
 <script>
   let currentField = null; // 當前掃描目標欄位
   const MAX_HISTORY = 5; // 歷史紀錄最大數量
+  let html5QrcodeScanner = null; // Html5QrcodeScanner 實例
 
   // 輔助函式：取得並解析 localStorage 資料
   function getLocalStorageItem(key, defaultValue = '[]') {
@@ -319,86 +320,78 @@
   }
 
   function startScan(id) {
-    alert("掃描按鈕已點擊，正在嘗試啟動相機..."); // 新增的診斷用 alert
+    alert("掃描按鈕已點擊，正在嘗試啟動相機..."); // 診斷用 alert
 
-    // 每次啟動前，確保 QuaggaJS 停止並移除所有監聽器
-    stopScan(); 
+    stopScan(); // 確保停止任何現有掃描器
     currentField = id;
     document.getElementById("scanner-overlay").style.display = "flex";
 
-    Quagga.init({
-      inputStream : {
-        name : "Live",
-        type : "LiveStream",
-        target : document.querySelector('#reader'),
-        constraints: {
-          width: {min: 320}, // 修改為更小的最小寬度
-          height: {min: 240}, // 修改為更小的最小高度
-          facingMode: "environment" // 使用後置鏡頭
-        }
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", // 綁定到 id 為 "reader" 的元素
+      { 
+        fps: 10, // 每秒偵測幀數
+        qrbox: {width: 250, height: 250}, // 掃描框大小
+        rememberLastUsedCamera: true, // 記住上次使用的相機
+        // 強制後置鏡頭，並指定掃描類型為一維條碼
+        videoConstraints: {
+          facingMode: { exact: "environment" },
+        },
+        formatsToScan: [ // *** 新增此行，指定要掃描的一維條碼格式 ***
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
+          Html5QrcodeSupportedFormats.CODABAR,
+          // 如果也有QR Code需求，可以加上：
+          // Html5QrcodeSupportedFormats.QR_CODE
+        ]
       },
-      decoder : {
-        readers : [
-          "code_128_reader", // 最常見的條碼
-          "code_39_reader",
-          "ean_8_reader",
-          "ean_13_reader", // 常用於產品條碼
-          "upc_a_reader",
-          "upc_e_reader",
-          "codabar_reader",
-          "i2of5_reader", // Interleaved 2 of 5
-          "2of5_reader", // Standard 2 of 5
-        ],
-        multiple: false // 只讀取一個條碼
-      },
-      locate: true // 啟用定位功能以提高準確性
-    }, function(err) {
-      if (err) {
-        console.error("QuaggaJS 初始化失敗: ", err); // 這行會輸出到 console，但用戶看不到
-        let errorMessage = "相機開啟失敗。";
-        if (err.name === "NotAllowedError") {
-            errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
-        } else if (err.name === "NotFoundError" || err.name === "OverconstrainedError") {
-            errorMessage += "找不到相機裝置或無法滿足相機要求。請確認相機已連接或未被其他應用程式占用。";
-        } else {
-            errorMessage += "發生未知錯誤：" + err.message; // 捕獲更多未知錯誤
-        }
-        alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
-        document.getElementById("scanner-overlay").style.display = "none";
-        return;
-      }
-      // 在 Quagga.start() 前增加一個小延遲
-      setTimeout(() => {
-        Quagga.start();
-        console.log("QuaggaJS 已啟動！");
-      }, 100); // 延遲 100 毫秒
-    });
+      /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息，雖然您看不到，但會記錄
+    );
 
-    Quagga.onDetected(function(result) {
-        if (result && result.codeResult && result.codeResult.code) {
-            const scannedCode = result.codeResult.code.substring(0, 15); // 取前 15 碼
-            document.getElementById(currentField).value = scannedCode;
-            localStorage.setItem(currentField, scannedCode);
-            saveHistory(currentField, scannedCode);
-            
-            // 處理輸入並更新顯示
-            handleInput(currentField); 
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  }
 
-            // 停止掃描並關閉疊加層
-            stopScan();
-        }
-    });
+  function onScanSuccess(decodedText, decodedResult) {
+    console.log(`Scan result: ${decodedText}`, decodedResult); // 會記錄到控制台
+    const scannedCode = decodedText.substring(0, 15); // 取前 15 碼
+    document.getElementById(currentField).value = scannedCode;
+    localStorage.setItem(currentField, scannedCode);
+    saveHistory(currentField, scannedCode);
+    
+    handleInput(currentField); 
+    stopScan();
+  }
 
-    Quagga.onImageProcessed(function(result) {
-      // 這是一個可選的回調，用於調試。
-    });
+  function onScanFailure(error) {
+    // 錯誤通常會在此處被捕獲。請您留意是否有彈窗。
+    console.warn(`Scanner error: ${error}`); // 會記錄到控制台
+    let errorMessage = "相機開啟失敗。";
+    if (error.includes("NotAllowedError") || error.includes("Permission denied")) {
+        errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
+    } else if (error.includes("NotFoundException") || error.includes("No camera found")) {
+        errorMessage += "找不到相機裝置。請確認相機已連接或未被其他應用程式占用。";
+    } else if (error.includes("NotReadableError") || error.includes("TrackStartError")) {
+        errorMessage += "相機無法讀取或已在使用中。請確認相機未被其他應用程式占用。";
+    } else if (error.includes("OverconstrainedError")) {
+        errorMessage += "相機要求過於嚴格。請嘗試更新瀏覽器或設備驅動。";
+    } else {
+        errorMessage += "發生未知錯誤：" + error;
+    }
+    alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
+    document.getElementById("scanner-overlay").style.display = "none";
   }
 
   function stopScan() {
-    if (Quagga && Quagga.isRunning()) {
-      Quagga.stop();
-      // 移除事件監聽器以避免在下次啟動時重複觸發
-      Quagga.offDetected();
+    if (html5QrcodeScanner && html5QrcodeScanner.getState() !== Html5QrcodeScanner.State.NOT_STARTED) {
+      html5QrcodeScanner.clear().then(() => {
+        console.log("Html5QrcodeScanner 已停止。");
+      }).catch((err) => {
+        console.error("Html5QrcodeScanner 停止失敗: ", err);
+      });
     }
     document.getElementById("scanner-overlay").style.display = "none";
   }
