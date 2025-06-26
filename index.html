@@ -1,88 +1,47 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>QuaggaJS + 表單手機一維碼掃描</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="permissions-policy" content="camera=(self)">
+  <meta charset="utf-8">
+  <title>QuaggaJS Live Demo</title>
   <script src="https://unpkg.com/@ericblade/quagga2@2.0.0-beta.5/dist/quagga.js"></script>
-  <style>
-    body { font-family: Arial; background: #f8f8f8; max-width:430px; margin:auto;}
-    .form-row { display: flex; align-items: center; gap: 8px; margin:14px 0;}
-    .form-row label { min-width:54px; font-weight:bold; font-size:17px;}
-    .form-row input { flex:1; padding: 12px; font-size: 18px; border-radius:7px; border:1px solid #bbb;}
-    #interactive { width:98vw; max-width:400px; height:240px; margin:14px auto; background:#000; border-radius:10px; }
-    #result { background: #fff; border: 1px dashed #999; padding: 12px; margin-top: 10px; font-size: 17px; min-height:38px;}
-    button { font-size:17px; padding:11px 22px; border-radius:7px; background:#007bff; color:#fff; border:none;}
-    #closeBtn { background:#dc3545; margin-left: 12px; }
-  </style>
 </head>
 <body>
-  <h2 style="text-align:center;">手機 QuaggaJS 一維碼表單</h2>
-  <div class="form-row">
-    <label>料號</label>
-    <input id="pn" maxlength="15" autocomplete="off">
-    <button onclick="currentField='pn'">填此欄</button>
-  </div>
-  <div class="form-row">
-    <label>製令</label>
-    <input id="mo" maxlength="15" autocomplete="off">
-    <button onclick="currentField='mo'">填此欄</button>
-  </div>
-  <div id="interactive"></div>
-  <div id="result"></div>
-  <button id="startBtn" onclick="startScan()">開啟相機</button>
-  <button id="closeBtn" onclick="stopScan()">關閉相機</button>
-<script>
-let currentField = "pn";
-let scanning = false;
-
-function startScan() {
-  if(scanning) return;
-  Quagga.init({
-    inputStream: {
-      name: "Live",
-      type: "LiveStream",
-      target: document.querySelector('#interactive'),
-      constraints: { facingMode: "environment" }
-    },
-    decoder: { readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"] },
-    locate: true
-  }, function(err) {
-    if (err) { alert("相機開啟失敗: " + err); return; }
-    Quagga.start();
-    scanning = true;
-  });
-  Quagga.onDetected(function(result) {
-    var code = result.codeResult.code;
-    if (code.length >= 8 && code.length <= 15) {
-      document.getElementById(currentField).value = code;
-      showResult();
-      // Quagga.stop(); // 如果要掃多欄請註解這行
+  <div id="interactive" style="width:90vw;max-width:400px;height:320px;margin:10px auto;"></div>
+  <button onclick="startScan()">開啟相機</button>
+  <button onclick="stopScan()">關閉相機</button>
+  <pre id="result"></pre>
+  <script>
+    let scanning = false;
+    function startScan() {
+      if (scanning) return;
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#interactive'),
+          constraints: {
+            facingMode: "environment"
+          }
+        },
+        decoder: {
+          readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
+        },
+        locate: true
+      }, function (err) {
+        if (err) { alert(err); return }
+        Quagga.start();
+        scanning = true;
+      });
+      Quagga.onDetected(function (result) {
+        document.getElementById('result').innerText = result.codeResult.code;
+      });
     }
-  });
-}
-
-function stopScan() {
-  if(scanning) {
-    Quagga.stop();
-    Quagga.offDetected();
-    scanning = false;
-  }
-}
-
-function showResult() {
-  let pn = document.getElementById('pn').value.trim();
-  let mo = document.getElementById('mo').value.trim();
-  let txt = "";
-  if(pn) txt += "料號: " + pn + "\n";
-  if(mo) txt += "製令: " + mo;
-  document.getElementById('result').innerText = txt;
-}
-['pn','mo'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', showResult);
-});
-window.onload = showResult;
-</script>
+    function stopScan() {
+      if (scanning) {
+        Quagga.stop();
+        scanning = false;
+      }
+    }
+  </script>
 </body>
 </html>
