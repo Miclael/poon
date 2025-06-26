@@ -2,46 +2,84 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>GitHub 上傳工具</title>
+  <title>GitHub API 多功能工具</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, textarea, button { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+    body { font-family: sans-serif; padding: 20px; max-width: 700px; margin: auto; }
+    input, textarea, button, select { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+    button { cursor: pointer; }
+    pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
   </style>
 </head>
 <body>
-  <h2>📤 GitHub 檔案上傳工具</h2>
-  <label>GitHub Token：</label>
+  <h2>🛠️ GitHub 多功能工具</h2>
+
+  <label>API 網域（預設 https://api.github.com）</label>
+  <input type="text" id="apiDomain" placeholder="例如：https://api.github.com" value="https://api.github.com">
+
+  <label>GitHub Token</label>
   <input type="password" id="token" placeholder="輸入你的 GitHub Token">
 
-  <label>儲存庫名稱（使用者/儲存庫）：</label>
+  <label>儲存庫名稱（使用者/儲存庫）</label>
   <input type="text" id="repo" placeholder="例如：miclael/test-repo">
 
-  <label>檔案名稱（含副檔名）：</label>
-  <input type="text" id="filename" placeholder="例如：test.txt">
+  <label>檔案路徑（含副檔名）</label>
+  <input type="text" id="filename" placeholder="例如：test.txt 或 folder/test.txt">
 
-  <label>檔案內容：</label>
-  <textarea id="content" rows="10" placeholder="在此輸入檔案內容..."></textarea>
+  <label>檔案內容</label>
+  <textarea id="content" rows="10" placeholder="在此輸入或編輯檔案內容..."></textarea>
 
-  <button onclick="uploadFile()">📤 上傳檔案到 GitHub</button>
+  <button onclick="getFile()">📄 讀取檔案</button>
+  <button onclick="uploadFile()">📤 上傳 / 更新檔案</button>
+  <button onclick="deleteFile()">🗑️ 刪除檔案</button>
+  <button onclick="listFiles()">📁 顯示檔案清單</button>
 
-  <pre id="result"></pre>
+  <pre id="result">🛈 操作回應將顯示在此</pre>
 
   <script>
+    let fileSha = null;
+
+    function getBaseUrl(path) {
+      const api = document.getElementById("apiDomain").value.trim().replace(/\/$/, "");
+      const repo = document.getElementById("repo").value.trim();
+      return `${api}/repos/${repo}/${path}`;
+    }
+
+    async function getFile() {
+      const token = getToken();
+      const filename = document.getElementById("filename").value.trim();
+      const result = document.getElementById("result");
+      if (!filename) return result.textContent = "❗ 請輸入檔案名稱";
+
+      const url = getBaseUrl(`contents/${filename}`);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+
+      if (res.ok) {
+        const decoded = decodeURIComponent(escape(atob(data.content)));
+        document.getElementById("content").value = decoded;
+        fileSha = data.sha;
+        result.textContent = `✅ 檔案讀取成功，SHA: ${fileSha}`;
+      } else {
+        fileSha = null;
+        result.textContent = `⚠️ 錯誤：${data.message}`;
+      }
+    }
+
     async function uploadFile() {
-      const token = document.getElementById("token").value;
-      const repo = document.getElementById("repo").value;
-      const filename = document.getElementById("filename").value;
+      const token = getToken();
+      const filename = document.getElementById("filename").value.trim();
       const content = document.getElementById("content").value;
       const result = document.getElementById("result");
+      if (!filename || !content) return result.textContent = "❗ 檔名與內容不得為空";
 
-      const apiUrl = `https://api.github.com/repos/${repo}/contents/${filename}`;
-
+      const url = getBaseUrl(`contents/${filename}`);
       const body = {
-        message: `Upload ${filename}`,
+        message: `Upload or update ${filename}`,
         content: btoa(unescape(encodeURIComponent(content)))
       };
+      if (fileSha) body.sha = fileSha;
 
-      const res = await fetch(apiUrl, {
+      const res = await fetch(url, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -49,14 +87,64 @@
         },
         body: JSON.stringify(body)
       });
-
       const data = await res.json();
 
       if (res.ok) {
-        result.textContent = `✅ 上傳成功！網址：\n${data.content.html_url}`;
+        fileSha = data.content.sha;
+        result.textContent = `✅ 上傳成功！\n網址：${data.content.html_url}`;
       } else {
-        result.textContent = `❌ 發生錯誤：\n${JSON.stringify(data, null, 2)}`;
+        result.textContent = `❌ 錯誤：\n${JSON.stringify(data, null, 2)}`;
       }
+    }
+
+    async function deleteFile() {
+      const token = getToken();
+      const filename = document.getElementById("filename").value.trim();
+      const result = document.getElementById("result");
+      if (!filename || !fileSha) return result.textContent = "❗ 請先讀取檔案以取得 SHA";
+
+      const url = getBaseUrl(`contents/${filename}`);
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json"
+        },
+        body: JSON.stringify({
+          message: `Delete ${filename}`,
+          sha: fileSha
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        fileSha = null;
+        document.getElementById("content").value = "";
+        result.textContent = `🗑️ 已刪除檔案 ${filename}`;
+      } else {
+        result.textContent = `❌ 錯誤：\n${JSON.stringify(data, null, 2)}`;
+      }
+    }
+
+    async function listFiles() {
+      const token = getToken();
+      const result = document.getElementById("result");
+
+      const url = getBaseUrl("contents");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        result.textContent = `📁 儲存庫檔案清單：\n\n` + data.map(f => `📄 ${f.name}`).join("\n");
+      } else {
+        result.textContent = `❌ 錯誤：\n${JSON.stringify(data, null, 2)}`;
+      }
+    }
+
+    function getToken() {
+      return document.getElementById("token").value.trim();
     }
   </script>
 </body>
