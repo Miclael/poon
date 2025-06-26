@@ -262,9 +262,9 @@
 </div>
 <div id="modalOverlay" onclick="closeModal()"></div>
 <script>
-  let qr = null; // Html5Qrcode 實例，取代 Html5QrcodeScanner
   let currentField = null; // 當前掃描目標欄位
   const MAX_HISTORY = 5; // 歷史紀錄最大數量
+  let html5QrcodeScanner = null; // Html5QrcodeScanner 實例
 
   // 輔助函式：取得並解析 localStorage 資料
   function getLocalStorageItem(key, defaultValue = '[]') {
@@ -326,76 +326,93 @@
     currentField = id;
     document.getElementById("scanner-overlay").style.display = "flex";
 
-    // 使用 Html5Qrcode 實例化
-    qr = new Html5Qrcode("reader");
+    // 步驟 1: 先列舉可用的相機
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        // 嘗試找到後置鏡頭 (environment facing mode)
+        const backCamera = devices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('environment')
+        );
+        let cameraId = backCamera ? backCamera.id : devices[0].id; // 如果找不到後置，則使用第一個相機
 
-    // 使用 .start() 方法啟動掃描器
-    qr.start(
-      { facingMode: "environment" }, // 影片約束：請求後置攝像頭，這是您提供的可行方案
-      { 
-        fps: 10, // 每秒偵測幀數
-        qrbox: {width: 250, height: 250}, // 掃描框大小
-        // 指定要掃描的一維條碼格式 (根據之前討論添加)
-        formatsToScan: [
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
-          Html5QrcodeSupportedFormats.CODABAR,
-          Html5QrcodeSupportedFormats.AZTEC, // 雖然主要是二維碼，但有時也可能用作通用掃描
-          Html5QrcodeSupportedFormats.DATA_MATRIX, // 同上
-          Html5QrcodeSupportedFormats.QR_CODE // 保留 QR code 以防萬一
-        ]
-      },
-      (decodedText, decodedResult) => { // 成功掃描的回調函式
-        console.log(`Scan result: ${decodedText}`, decodedResult); // 會記錄到控制台
-        
-        // 實作最多掃描字元為15的限制
-        const scannedCode = decodedText.substring(0, 15); 
-        
-        document.getElementById(currentField).value = scannedCode;
-        localStorage.setItem(currentField, scannedCode);
-        saveHistory(currentField, scannedCode);
-        
-        handleInput(currentField); 
-        stopScan(); // 掃描成功後停止相機
-      }
-    ).catch(err => { // 相機啟動失敗的回調函式
-      // 捕獲並彈出錯誤訊息，與您提供的可行程式碼邏輯一致
-      let errorMessage = "相機開啟失敗：";
-      if (String(err).includes("NotAllowedError") || String(err).includes("Permission denied")) {
-        errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
-      } else if (String(err).includes("NotFoundException") || String(err).includes("No camera found")) {
-        errorMessage += "找不到相機裝置。請確認相機已連接或未被其他應用程式占用。";
-      } else if (String(err).includes("NotReadableError") || String(err).includes("TrackStartError")) {
-        errorMessage += "相機無法讀取或已在使用中。請確認相機未被其他應用程式占用。";
-      } else if (String(err).includes("OverconstrainedError")) {
-        errorMessage += "相機要求過於嚴格。請嘗試更新瀏覽器或設備驅動。";
+        // 實例化 Html5QrcodeScanner
+        html5QrcodeScanner = new Html5QrcodeScanner(
+          "reader", // 綁定到 id 為 "reader" 的元素
+          { 
+            fps: 10, // 每秒偵測幀數
+            qrbox: {width: 300, height: 100}, // 掃描框優化為一維條碼（寬高比）
+            rememberLastUsedCamera: true, // 記住上次使用的相機
+            videoConstraints: { // 使用找到的相機 ID
+              deviceId: { exact: cameraId },
+            },
+            formatsToScan: [ // 指定要掃描的一維條碼格式（重點改進）
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
+              Html5QrcodeSupportedFormats.CODABAR,
+              // 如果也有二維碼需求，可以保留以下格式，否則可移除以提高專一性
+              Html5QrcodeSupportedFormats.AZTEC, 
+              Html5QrcodeSupportedFormats.DATA_MATRIX, 
+              Html5QrcodeSupportedFormats.QR_CODE, // 保留 QR Code 以防萬一
+            ]
+          },
+          /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息
+        );
+
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
       } else {
-        errorMessage += String(err); // 顯示原始錯誤訊息
+        onScanFailure("Html5Qrcode.getCameras: 找不到任何相機裝置。"); // 沒有找到相機
       }
-      alert(errorMessage);
-      document.getElementById("scanner-overlay").style.display = "none";
+    }).catch(err => {
+      onScanFailure("Html5Qrcode.getCameras 獲取相機設備失敗: " + String(err.message || err)); // 獲取相機列表失敗
     });
   }
 
-  function stopScan() {
-    if (qr) { // 如果 qr 實例存在
-      qr.stop().then(() => {
-        qr.clear(); // 清除掃描器狀態
-        qr = null; // 重置 qr 變數
-        console.log("Html5Qrcode 已停止。");
-        document.getElementById("scanner-overlay").style.display = "none";
-      }).catch((err) => {
-        console.error("Html5Qrcode 停止失敗: ", err);
-        document.getElementById("scanner-overlay").style.display = "none"; // 即使停止失敗也關閉疊加層
-      });
+  function onScanSuccess(decodedText, decodedResult) {
+    console.log(`Scan result: ${decodedText}`, decodedResult); // 會記錄到控制台
+    const scannedCode = decodedText.substring(0, 15); // 取前 15 碼
+    document.getElementById(currentField).value = scannedCode;
+    localStorage.setItem(currentField, scannedCode);
+    saveHistory(currentField, scannedCode);
+    
+    handleInput(currentField); 
+    stopScan();
+  }
+
+  function onScanFailure(error) {
+    // 錯誤通常會在此處被捕獲。請您留意是否有彈窗。
+    console.warn(`Scanner error: ${error}`); // 會記錄到控制台
+    let errorMessage = "相機開啟失敗。";
+    if (String(error).includes("NotAllowedError") || String(error).includes("Permission denied")) {
+        errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
+    } else if (String(error).includes("NotFoundException") || String(error).includes("No camera found")) {
+        errorMessage += "找不到相機裝置。請確認相機已連接或未被其他應用程式占用。";
+    } else if (String(error).includes("NotReadableError") || String(error).includes("TrackStartError")) {
+        errorMessage += "相機無法讀取或已在使用中。請確認相機未被其他應用程式占用。";
+    } else if (String(error).includes("OverconstrainedError")) {
+        errorMessage += "相機要求過於嚴格。請嘗試更新瀏覽器或設備驅動。";
     } else {
-      document.getElementById("scanner-overlay").style.display = "none";
+        errorMessage += "發生未知錯誤：" + String(error); // 確保錯誤訊息可讀
     }
+    alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
+    document.getElementById("scanner-overlay").style.display = "none";
+  }
+
+  function stopScan() {
+    if (html5QrcodeScanner && html5QrcodeScanner.getState() !== Html5QrcodeScanner.State.NOT_STARTED) {
+      html5QrcodeScanner.clear().then(() => {
+        console.log("Html5QrcodeScanner 已停止。");
+      }).catch((err) => {
+        console.error("Html5QrcodeScanner 停止失敗: ", err);
+      });
+    }
+    document.getElementById("scanner-overlay").style.display = "none";
   }
 
   function copyResult() {
@@ -419,8 +436,7 @@
     defaultOpt.text = "-- 請選擇 --";
     select.appendChild(defaultOpt);
 
-    // 從 localStorage 載入缺點列表
-    let list = getLocalStorageItem("defects", "[]"); 
+    let list = getLocalStorageItem("defects", "[]"); // 從 localStorage 載入缺點列表
 
     list.forEach(item => {
       const opt = document.createElement("option");
