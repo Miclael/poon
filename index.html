@@ -331,7 +331,7 @@
         constraints: {
           width: {min: 640},
           height: {min: 480},
-          aspectRatio: {min: 3/4, max: 3/4}, // 強制直向比例
+          // 已移除 aspectRatio 約束，以增加相機啟動的成功率
           facingMode: "environment" // 使用後置鏡頭
         }
       },
@@ -346,8 +346,6 @@
           "codabar_reader",
           "i2of5_reader", // Interleaved 2 of 5
           "2of5_reader", // Standard 2 of 5
-          // "databar_reader", // 可選，如果需要 Databar
-          // "databar_expanded_reader" // 可選，如果需要 Databar Expanded
         ],
         multiple: false // 只讀取一個條碼
       },
@@ -384,11 +382,8 @@
         }
     });
 
-    // 處理 QuaggaJS 錯誤事件
     Quagga.onImageProcessed(function(result) {
-        // 這是一個可選的回調，用於調試。可以查看處理後的影像。
-        // 如果需要視覺化條碼定位框，可以在這裡繪製
-        // 例如：Quagga.canvas.ctx.fillStyle = "red"; Quagga.canvas.ctx.fillRect(result.box[0], result.box[1], result.box[2], result.box[3]);
+      // 這是一個可選的回調，用於調試。
     });
   }
 
@@ -397,8 +392,6 @@
       Quagga.stop();
       // 移除事件監聽器以避免在下次啟動時重複觸發
       Quagga.offDetected();
-      // 如果有其他監聽器，也應在此處移除，例如：
-      // Quagga.offProcessed();
     }
     document.getElementById("scanner-overlay").style.display = "none";
   }
