@@ -1,47 +1,481 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <title>QuaggaJS Live Demo</title>
-  <script src="https://unpkg.com/@ericblade/quagga2@2.0.0-beta.5/dist/quagga.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 手機掃碼輸入</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+        body {
+            font-family: Arial; /* 修改為較常見字體 */
+            padding: 12px;
+            line-height: 1.6;
+            max-width: 420px; /* 限制主內容寬度 */
+            margin: auto;
+            background: #f8f8f8;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 16px;
+            font-size: 16px;
+        }
+        .input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px; /* 增加間距 */
+        }
+        .input-container {
+            flex: 1;
+        }
+        .input-container input {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .char-count {
+            font-size: 12px;
+            color: #555;
+            text-align: right;
+        }
+        .input-row button, .copy-btn {
+            padding: 10px;
+            font-size: 16px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            white-space: nowrap; /* 防止按鈕文字換行 */
+        }
+        .copy-btn {
+            width: 100%;
+            margin-top: 10px;
+            background: #28a745; /* 複製按鈕綠色 */
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        #result, #history {
+            background: #fff;
+            border: 1px dashed #999;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+            white-space: pre-line; /* 保留換行符 */
+            min-height: 50px; /* 最小高度 */
+        }
+
+        /* 掃描器疊加層樣式 */
+        #scanner-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        #reader {
+            width: 300px; /* 掃描區域寬度 */
+            max-width: 90%;
+            height: auto; /* 高度自動調整 */
+            aspect-ratio: 3 / 4; /* 強制為直向比例 */
+            background-color: black; /* 掃描區域背景色 */
+        }
+        #close-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #dc3545; /* 紅色關閉按鈕 */
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+        }
+
+        /* 彈窗樣式 */
+        #defectModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border: 2px solid #444;
+            padding: 24px 16px;
+            z-index: 10000; /* 高於掃描層 */
+            box-shadow: 0 0 12px rgba(0,0,0,0.25);
+            width: 92vw;
+            max-width: 400px;
+            border-radius: 12px;
+        }
+        #defectModal input {
+            width: 100%;
+            padding: 14px 10px;
+            font-size: 20px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        #defectModal button {
+            font-size: 18px;
+            padding: 12px 0;
+            width: 48%; /* 調整按鈕寬度 */
+            border: none;
+            border-radius: 8px;
+            margin: 2% 1%; /* 調整間距 */
+        }
+        #defectModal button:first-child {
+            background: #17a34a; /* 儲存按鈕綠色 */
+            color: #fff;
+        }
+        #defectModal button:last-child {
+            background: #999; /* 取消按鈕灰色 */
+            color: #fff;
+        }
+        #modalOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.3);
+            z-index: 9999; /* 高於掃描層，但低於彈窗本身 */
+        }
+        
+        select#defect-select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        /* 手機響應式調整 */
+        @media (max-width: 600px) {
+            #defectModal {
+                width: 98vw;
+                max-width: 96vw;
+                padding: 16px 4vw;
+            }
+            #defectModal input {
+                font-size: 20px;
+            }
+            #defectModal button {
+                font-size: 20px;
+                width: 48%;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div id="interactive" style="width:90vw;max-width:400px;height:320px;margin:10px auto;"></div>
-  <button onclick="startScan()">開啟相機</button>
-  <button onclick="stopScan()">關閉相機</button>
-  <pre id="result"></pre>
-  <script>
-    let scanning = false;
-    function startScan() {
-      if (scanning) return;
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#interactive'),
-          constraints: {
-            facingMode: "environment"
-          }
-        },
-        decoder: {
-          readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
-        },
-        locate: true
-      }, function (err) {
-        if (err) { alert(err); return }
-        Quagga.start();
-        scanning = true;
-      });
-      Quagga.onDetected(function (result) {
-        document.getElementById('result').innerText = result.codeResult.code;
-      });
-    }
-    function stopScan() {
-      if (scanning) {
-        Quagga.stop();
-        scanning = false;
+<h2 style="text-align:center;">📱 手機掃碼輸入</h2>
+<label>料號</label>
+<div class="input-row">
+  <div class="input-container">
+    <input id="pn" maxlength="20" oninput="handleInput('pn')"/>
+    <div class="char-count" id="pn-count">0 / 20</div>
+  </div>
+  <button onclick="startScan('pn')">掃描</button>
+</div>
+<label>製令</label>
+<div class="input-row">
+  <div class="input-container">
+    <input id="mo" maxlength="20" oninput="handleInput('mo')"/>
+    <div class="char-count" id="mo-count">0 / 20</div>
+  </div>
+  <button onclick="startScan('mo')">掃描</button>
+</div>
+<label>缺點</label>
+<select id="defect-select" onchange="updateDisplay()"></select> <div style="display:flex;gap:10px;margin-top:10px;">
+  <button class="copy-btn" onclick="openModal()" style="background:#007BFF;">➕ 新增缺點</button>
+  <button class="copy-btn" onclick="deleteDefect()" style="background:#dc3545;">🗑️ 刪除缺點</button>
+</div>
+<div class="input-row" style="margin-top:10px;">
+  <div class="input-container">
+    <label>單報</label>
+    <input id="spnl" inputmode="numeric" oninput="handleInput('spnl')" pattern="[0-9]*"/>
+  </div>
+  <div class="input-container">
+    <label>大報</label>
+    <input id="big" inputmode="numeric" oninput="handleInput('big')" pattern="[0-9]*"/>
+  </div>
+</div>
+<div id="result"></div>
+<button class="copy-btn" onclick="copyResult()">📋 複製顯示內容</button>
+<h3>📜 掃描紀錄</h3>
+<div id="history"></div>
+<div id="scanner-overlay">
+  <div id="reader"></div>
+  <button id="close-btn" onclick="stopScan()">❌ 關閉相機</button>
+</div>
+<div id="defectModal">
+  <h3 style="text-align:center;margin-top:0;">新增缺點</h3>
+  <input id="newDefectInput" placeholder="請輸入缺點名稱" type="text" />
+  <div style="display:flex;justify-content:space-between;margin-top:16px;">
+    <button onclick="saveDefect()">✅ 儲存</button>
+    <button onclick="closeModal()">❌ 取消</button>
+  </div>
+</div>
+<div id="modalOverlay" onclick="closeModal()"></div>
+<script>
+  let currentField = null; // 當前掃描目標欄位
+  const MAX_HISTORY = 5; // 歷史紀錄最大數量
+
+  // 輔助函式：取得並解析 localStorage 資料
+  function getLocalStorageItem(key, defaultValue = '[]') {
+      try {
+          const item = localStorage.getItem(key);
+          return item ? JSON.parse(item) : JSON.parse(defaultValue);
+      } catch (e) {
+          console.error(`Error parsing localStorage item "${key}":`, e);
+          return JSON.parse(defaultValue);
       }
+  }
+
+  // 輔助函式：設定 localStorage 資料
+  function setLocalStorageItem(key, value) {
+      try {
+          localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+          console.error(`Error setting localStorage item "${key}":`, e);
+      }
+  }
+
+  function handleInput(id) {
+    const val = document.getElementById(id).value;
+    const count = document.getElementById(id + "-count");
+    if (count) count.innerText = val.length + " / " + document.getElementById(id).maxLength; // 使用 maxLength
+    localStorage.setItem(id, val);
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    const pn = document.getElementById("pn").value;
+    const mo = document.getElementById("mo").value;
+    const defect = document.getElementById("defect-select").value || "";
+    const spnl = document.getElementById("spnl").value;
+    const big = document.getElementById("big").value;
+
+    let lines = [];
+    if (pn) lines.push(pn);
+    // 製令格式化，如果製令有值且長度超過11，則截斷並加短槓
+    const moFmt = mo ? (mo.length > 11 ? (mo.slice(0,10) + "-" + mo.slice(-1)) : mo) : "";
+    if (moFmt) lines.push(moFmt);
+    
+    if (defect) {
+      let line = defect;
+      if (spnl) line += ` 單報${spnl}spnl`;
+      if (big) line += ` 大報${big}片`;
+      lines.push(line);
     }
-  </script>
+    lines.push("請派員確認");
+    document.getElementById("result").innerText = lines.join("\n");
+  }
+
+  function startScan(id) {
+    // 確保每次開始掃描前停止 QuaggaJS 並移除事件
+    stopScan(); 
+    currentField = id;
+    document.getElementById("scanner-overlay").style.display = "flex";
+
+    Quagga.init({
+      inputStream : {
+        name : "Live",
+        type : "LiveStream",
+        target : document.querySelector('#reader'),
+        constraints: {
+          width: {min: 640},
+          height: {min: 480},
+          aspectRatio: {min: 3/4, max: 3/4}, // 強制直向比例
+          facingMode: "environment" // 使用後置鏡頭
+        }
+      },
+      decoder : {
+        readers : [
+          "code_128_reader", // 最常見的條碼
+          "code_39_reader",
+          "ean_8_reader",
+          "ean_13_reader", // 常用於產品條碼
+          "upc_a_reader",
+          "upc_e_reader",
+          "codabar_reader",
+          "i2of5_reader", // Interleaved 2 of 5
+          "2of5_reader", // Standard 2 of 5
+          "databar_reader",
+          "databar_expanded_reader"
+        ],
+        multiple: false // 只讀取一個條碼
+      },
+      locate: true // 啟用定位功能以提高準確性
+    }, function(err) {
+      if (err) {
+        console.error("QuaggaJS 初始化失敗: ", err);
+        alert("相機開啟失敗：" + (err.message || err));
+        document.getElementById("scanner-overlay").style.display = "none";
+        return;
+      }
+      Quagga.start();
+    });
+
+    Quagga.onDetected(function(result) {
+        if (result && result.codeResult && result.codeResult.code) {
+            const scannedCode = result.codeResult.code.substring(0, 15); // 取前 15 碼
+            document.getElementById(currentField).value = scannedCode;
+            localStorage.setItem(currentField, scannedCode);
+            saveHistory(currentField, scannedCode);
+            
+            // 處理輸入並更新顯示
+            handleInput(currentField); 
+
+            // 停止掃描並關閉疊加層
+            stopScan();
+            // Quagga.offDetected(); // 在 stopScan 中處理，避免重複呼叫
+        }
+    });
+
+    // 處理 QuaggaJS 錯誤事件
+    Quagga.onImageProcessed(function(result) {
+        // 這是一個可選的回調，用於調試。可以查看處理後的影像。
+        // if (result && result.box) {
+        //     // console.log("Barcode box:", result.box);
+        // }
+    });
+  }
+
+  function stopScan() {
+    if (Quagga && Quagga.isRunning()) {
+      Quagga.stop();
+      // 移除事件監聽器以避免在下次啟動時重複觸發
+      Quagga.offDetected();
+      // Quagga.offImageProcessed(); // 如果有監聽此事件也移除
+    }
+    document.getElementById("scanner-overlay").style.display = "none";
+  }
+
+  function copyResult() {
+    const text = document.getElementById("result").innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("✅ 已複製");
+    }).catch(err => {
+        console.error("複製失敗: ", err);
+        alert("❌ 複製失敗，請手動複製。");
+    });
+  }
+
+  // 缺點管理（下拉與localStorage）
+  function loadDefects(selected = "") {
+    const select = document.getElementById("defect-select");
+    select.innerHTML = ""; // 清空現有選項
+
+    // 確保有預設選項
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.text = "-- 請選擇 --";
+    select.appendChild(defaultOpt);
+
+    let list = getLocalStorageItem("defects", "[]"); // 從 localStorage 載入缺點列表
+
+    list.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item;
+      opt.text = item;
+      if (item === selected) opt.selected = true;
+      select.appendChild(opt);
+    });
+    updateDisplay(); // 確保下拉選單更新後，結果也更新
+  }
+
+  function deleteDefect() {
+    const sel = document.getElementById("defect-select");
+    const val = sel.value;
+    if (!val) {
+        return alert("請選擇要刪除的缺點！");
+    }
+    if (!confirm(`確定要刪除缺點：「${val}」嗎？`)) {
+        return;
+    }
+    let list = getLocalStorageItem("defects", "[]");
+    list = list.filter(x => x !== val);
+    setLocalStorageItem("defects", list); // 儲存更新後的列表
+    loadDefects(); // 重新載入下拉選單
+  }
+
+  function saveDefect() {
+    const newDefect = document.getElementById('newDefectInput').value.trim();
+    if (!newDefect) {
+        return alert('請輸入缺點名稱');
+    }
+    let list = getLocalStorageItem("defects", "[]");
+    if (!list.includes(newDefect)) { // 檢查是否已存在
+      list.push(newDefect);
+      setLocalStorageItem("defects", list); // 儲存更新後的列表
+    }
+    
+    // 將新增加的缺點設定為選中狀態
+    loadDefects(newDefect); 
+    closeModal();
+    updateDisplay();
+  }
+
+  function openModal() {
+    document.getElementById('defectModal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
+    document.getElementById('newDefectInput').value = ''; // 清空輸入框
+    setTimeout(() => {
+      document.getElementById('newDefectInput').focus();
+    }, 150);
+  }
+
+  function closeModal() {
+    document.getElementById('defectModal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
+  }
+
+  function saveHistory(field, text) {
+    const time = new Date().toLocaleString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    let logs = getLocalStorageItem("scanHistory", "[]");
+    logs.unshift({ time, field, text }); // 新的紀錄放在最前面
+    if (logs.length > MAX_HISTORY) logs = logs.slice(0, MAX_HISTORY); // 只保留最新 N 筆
+    setLocalStorageItem("scanHistory", logs);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const logs = getLocalStorageItem("scanHistory", "[]");
+    const wrap = document.getElementById("history");
+    if (logs.length === 0) {
+        wrap.innerHTML = "<p>尚無掃描紀錄。</p>";
+        return;
+    }
+    // 使用 ul/li 列表顯示歷史紀錄
+    let historyHtml = '<ul>';
+    logs.forEach(log => {
+        historyHtml += `<li>[${log.time}] ${log.field.toUpperCase()}：${log.text}</li>`;
+    });
+    historyHtml += '</ul>';
+    wrap.innerHTML = historyHtml;
+  }
+
+  window.onload = () => {
+    // 載入 localStorage 中儲存的資料
+    ["pn", "mo", "spnl", "big"].forEach(id => {
+      document.getElementById(id).value = localStorage.getItem(id) || "";
+      handleInput(id); // 初始化字元計數和顯示
+    });
+    
+    loadDefects(); // 載入缺點選單
+    renderHistory(); // 渲染歷史紀錄
+
+    // 監聽缺點選擇變化，立即更新顯示
+    document.getElementById("defect-select").addEventListener("change", updateDisplay);
+  };
+</script>
 </body>
 </html>
