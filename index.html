@@ -319,6 +319,8 @@
   }
 
   function startScan(id) {
+    alert("掃描按鈕已點擊，正在嘗試啟動相機..."); // 新增的診斷用 alert
+
     // 每次啟動前，確保 QuaggaJS 停止並移除所有監聽器
     stopScan(); 
     currentField = id;
@@ -352,19 +354,24 @@
       locate: true // 啟用定位功能以提高準確性
     }, function(err) {
       if (err) {
-        console.error("QuaggaJS 初始化失敗: ", err);
-        let errorMessage = "相機開啟失敗。請檢查：\n1. 您的瀏覽器是否支援相機。\n2. 您是否允許了相機權限。\n3. 您是否正在使用 HTTPS (部分瀏覽器要求)。";
+        console.error("QuaggaJS 初始化失敗: ", err); // 這行會輸出到 console，但用戶看不到
+        let errorMessage = "相機開啟失敗。";
         if (err.name === "NotAllowedError") {
-            errorMessage = "相機權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
+            errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
         } else if (err.name === "NotFoundError" || err.name === "OverconstrainedError") {
-            errorMessage = "找不到相機裝置或無法滿足相機要求。請確認相機已連接或未被其他應用程式占用。";
+            errorMessage += "找不到相機裝置或無法滿足相機要求。請確認相機已連接或未被其他應用程式占用。";
+        } else {
+            errorMessage += "發生未知錯誤：" + err.message; // 捕獲更多未知錯誤
         }
-        alert(errorMessage);
+        alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
         document.getElementById("scanner-overlay").style.display = "none";
         return;
       }
-      Quagga.start();
-      console.log("QuaggaJS 已啟動！");
+      // 在 Quagga.start() 前增加一個小延遲
+      setTimeout(() => {
+        Quagga.start();
+        console.log("QuaggaJS 已啟動！");
+      }, 100); // 延遲 100 毫秒
     });
 
     Quagga.onDetected(function(result) {
