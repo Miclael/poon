@@ -264,7 +264,7 @@
 <script>
   let currentField = null; // 當前掃描目標欄位
   const MAX_HISTORY = 5; // 歷史紀錄最大數量
-  let html5QrcodeScanner = null; // Html5QrcodeScanner 實例
+  let html5QrcodeScanner = null; // Html5QrcodeScanner 實例 (注意變數名稱改變)
 
   // 輔助函式：取得並解析 localStorage 資料
   function getLocalStorageItem(key, defaultValue = '[]') {
@@ -336,7 +336,7 @@
         );
         let cameraId = backCamera ? backCamera.id : devices[0].id; // 如果找不到後置，則使用第一個相機
 
-        // 實例化 Html5QrcodeScanner
+        // 實例化 Html5QrcodeScanner (注意這裡的改動)
         html5QrcodeScanner = new Html5QrcodeScanner(
           "reader", // 綁定到 id 為 "reader" 的元素
           { 
@@ -405,6 +405,7 @@
   }
 
   function stopScan() {
+    // 停止掃描器 (注意這裡現在是 html5QrcodeScanner)
     if (html5QrcodeScanner && html5QrcodeScanner.getState() !== Html5QrcodeScanner.State.NOT_STARTED) {
       html5QrcodeScanner.clear().then(() => {
         console.log("Html5QrcodeScanner 已停止。");
