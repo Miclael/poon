@@ -326,33 +326,51 @@
     currentField = id;
     document.getElementById("scanner-overlay").style.display = "flex";
 
-    html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", // 綁定到 id 為 "reader" 的元素
-      { 
-        fps: 10, // 每秒偵測幀數
-        qrbox: {width: 250, height: 250}, // 掃描框大小
-        rememberLastUsedCamera: true, // 記住上次使用的相機
-        // 強制後置鏡頭，並指定掃描類型為一維條碼
-        videoConstraints: {
-          facingMode: { exact: "environment" },
-        },
-        formatsToScan: [ // *** 新增此行，指定要掃描的一維條碼格式 ***
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
-          Html5QrcodeSupportedFormats.CODABAR,
-          // 如果也有QR Code需求，可以加上：
-          // Html5QrcodeSupportedFormats.QR_CODE
-        ]
-      },
-      /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息，雖然您看不到，但會記錄
-    );
+    // 步驟 1: 先列舉可用的相機
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        // 嘗試找到後置鏡頭 (environment facing mode)
+        const backCamera = devices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('environment')
+        );
+        let cameraId = backCamera ? backCamera.id : devices[0].id; // 如果找不到後置，則使用第一個相機
 
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        // 實例化 Html5QrcodeScanner
+        html5QrcodeScanner = new Html5QrcodeScanner(
+          "reader", // 綁定到 id 為 "reader" 的元素
+          { 
+            fps: 10, // 每秒偵測幀數
+            qrbox: {width: 250, height: 250}, // 掃描框大小
+            rememberLastUsedCamera: true, // 記住上次使用的相機
+            videoConstraints: { // 使用找到的相機 ID
+              deviceId: { exact: cameraId },
+              facingMode: { exact: "environment" }, // 仍然指定後置鏡頭，作為額外確認
+            },
+            formatsToScan: [ // 指定要掃描的一維條碼格式
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
+              Html5QrcodeSupportedFormats.CODABAR,
+              Html5QrcodeSupportedFormats.AZTEC, // 某些一維碼也可能用到
+              Html5QrcodeSupportedFormats.DATA_MATRIX, // 某些一維碼也可能用到
+            ]
+          },
+          /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息
+        );
+
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+      } else {
+        onScanFailure("Html5Qrcode.getCameras: 找不到任何相機裝置。"); // 沒有找到相機
+      }
+    }).catch(err => {
+      onScanFailure("Html5Qrcode.getCameras 獲取相機設備失敗: " + err.message || err); // 獲取相機列表失敗
+    });
   }
 
   function onScanSuccess(decodedText, decodedResult) {
@@ -370,16 +388,16 @@
     // 錯誤通常會在此處被捕獲。請您留意是否有彈窗。
     console.warn(`Scanner error: ${error}`); // 會記錄到控制台
     let errorMessage = "相機開啟失敗。";
-    if (error.includes("NotAllowedError") || error.includes("Permission denied")) {
+    if (String(error).includes("NotAllowedError") || String(error).includes("Permission denied")) {
         errorMessage += "權限被拒絕。請在瀏覽器設定中允許此網站使用相機。";
-    } else if (error.includes("NotFoundException") || error.includes("No camera found")) {
+    } else if (String(error).includes("NotFoundException") || String(error).includes("No camera found")) {
         errorMessage += "找不到相機裝置。請確認相機已連接或未被其他應用程式占用。";
-    } else if (error.includes("NotReadableError") || error.includes("TrackStartError")) {
+    } else if (String(error).includes("NotReadableError") || String(error).includes("TrackStartError")) {
         errorMessage += "相機無法讀取或已在使用中。請確認相機未被其他應用程式占用。";
-    } else if (error.includes("OverconstrainedError")) {
+    } else if (String(error).includes("OverconstrainedError")) {
         errorMessage += "相機要求過於嚴格。請嘗試更新瀏覽器或設備驅動。";
     } else {
-        errorMessage += "發生未知錯誤：" + error;
+        errorMessage += "發生未知錯誤：" + String(error); // 確保錯誤訊息可讀
     }
     alert(errorMessage); // 期望這個 alert 會彈出錯誤訊息
     document.getElementById("scanner-overlay").style.display = "none";
