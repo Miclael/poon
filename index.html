@@ -228,7 +228,8 @@
   <button onclick="startScan('mo')">掃描</button>
 </div>
 <label>缺點</label>
-<select id="defect-select" onchange="updateDisplay()"></select> <div style="display:flex;gap:10px;margin-top:10px;">
+<select id="defect-select" onchange="updateDisplay()"></select>
+<div style="display:flex;gap:10px;margin-top:10px;">
   <button class="copy-btn" onclick="openModal()" style="background:#007BFF;">➕ 新增缺點</button>
   <button class="copy-btn" onclick="deleteDefect()" style="background:#dc3545;">🗑️ 刪除缺點</button>
 </div>
@@ -329,9 +330,8 @@
         type : "LiveStream",
         target : document.querySelector('#reader'),
         constraints: {
-          width: {min: 640},
-          height: {min: 480},
-          // 已移除 aspectRatio 約束，以增加相機啟動的成功率
+          width: {min: 320}, // 修改為更小的最小寬度
+          height: {min: 240}, // 修改為更小的最小高度
           facingMode: "environment" // 使用後置鏡頭
         }
       },
