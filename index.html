@@ -343,9 +343,9 @@
             fps: 10, // 每秒偵測幀數
             qrbox: {width: 250, height: 250}, // 掃描框大小
             rememberLastUsedCamera: true, // 記住上次使用的相機
-            videoConstraints: { // 使用找到的相機 ID
-              deviceId: { exact: cameraId },
-              facingMode: { exact: "environment" }, // 仍然指定後置鏡頭，作為額外確認
+            // 簡化 videoConstraints，主要依靠 deviceId
+            videoConstraints: { 
+              deviceId: { exact: cameraId } 
             },
             formatsToScan: [ // 指定要掃描的一維條碼格式
               Html5QrcodeSupportedFormats.CODE_128,
@@ -356,8 +356,8 @@
               Html5QrcodeSupportedFormats.UPC_E,
               Html5QrcodeSupportedFormats.ITF, // Interleaved 2 of 5
               Html5QrcodeSupportedFormats.CODABAR,
-              Html5QrcodeSupportedFormats.AZTEC, // 某些一維碼也可能用到
-              Html5QrcodeSupportedFormats.DATA_MATRIX, // 某些一維碼也可能用到
+              Html5QrcodeSupportedFormats.AZTEC, 
+              Html5QrcodeSupportedFormats.DATA_MATRIX, 
             ]
           },
           /* verbose= */ true // 設為 true 可在控制台查看更多詳細訊息
@@ -369,7 +369,7 @@
         onScanFailure("Html5Qrcode.getCameras: 找不到任何相機裝置。"); // 沒有找到相機
       }
     }).catch(err => {
-      onScanFailure("Html5Qrcode.getCameras 獲取相機設備失敗: " + err.message || err); // 獲取相機列表失敗
+      onScanFailure("Html5Qrcode.getCameras 獲取相機設備失敗: " + String(err.message || err)); // 獲取相機列表失敗
     });
   }
 
