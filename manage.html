@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管理機台/原因/狀況</title>
+<style>
+  body{font-family:"Noto Sans TC",sans-serif;padding:12px;background:#f9fafb}
+  .card{background:#fff;border:1px solid #ccc;border-radius:8px;padding:12px;margin-bottom:12px}
+  h3{margin-top:0}
+  ul{list-style:none;padding:0}
+  li{margin:.3rem 0;display:flex;justify-content:space-between;align-items:center}
+  button{margin-left:6px}
+  .btn-danger{background:#dc2626;color:#fff;border:none;padding:.2rem .5rem;cursor:pointer}
+</style>
+</head>
+<body>
+<h2>管理項目</h2>
+<a href="index.html">回到回報頁</a>
+
+<div class="card">
+  <h3>機台</h3>
+  <input id="newMachine" placeholder="新增機台"><button onclick="addMachine()">新增</button>
+  <ul id="machineList"></ul>
+</div>
+
+<div class="card">
+  <h3>故障原因（依機台）</h3>
+  <select id="selMachine"></select>
+  <input id="newReason" placeholder="新增原因"><button onclick="addReason()">新增</button>
+  <ul id="reasonList"></ul>
+</div>
+
+<div class="card">
+  <h3>處理狀況</h3>
+  <input id="newStatus" placeholder="新增狀況"><button onclick="addStatus()">新增</button>
+  <ul id="statusList"></ul>
+</div>
+
+<script>
+const STORE_KEY="fault_report_store_v3";
+let store=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+if(!store.machines)store.machines=["鑽孔-1","AOI-1"];
+if(!store.reasonsByMachine)store.reasonsByMachine={"鑽孔-1":["主軸異常"],"AOI-1":["鏡頭異常"]};
+if(!store.statuses)store.statuses=["已派修","已修復"];
+if(!store.records)store.records=[];
+
+function save(){localStorage.setItem(STORE_KEY,JSON.stringify(store));renderAll();}
+function addMachine(){
+  const v=document.getElementById("newMachine").value.trim();
+  if(v && !store.machines.includes(v)){store.machines.push(v);store.reasonsByMachine[v]=[];save();}
+}
+function delMachine(m){if(confirm("刪除機台 "+m+" ?")){store.machines=store.machines.filter(x=>x!==m);delete store.reasonsByMachine[m];save();}}
+function addReason(){
+  const m=document.getElementById("selMachine").value;
+  const v=document.getElementById("newReason").value.trim();
+  if(m && v){store.reasonsByMachine[m].push(v);save();}
+}
+function delReason(m,r){if(confirm("刪除原因 "+r+" ?")){store.reasonsByMachine[m]=store.reasonsByMachine[m].filter(x=>x!==r);save();}}
+function addStatus(){
+  const v=document.getElementById("newStatus").value.trim();
+  if(v && !store.statuses.includes(v)){store.statuses.push(v);save();}
+}
+function delStatus(s){if(confirm("刪除狀況 "+s+" ?")){store.statuses=store.statuses.filter(x=>x!==s);save();}}
+
+function renderAll(){
+  const ml=document.getElementById("machineList");ml.innerHTML="";
+  store.machines.forEach(m=>{
+    const li=document.createElement("li");li.textContent=m;
+    const btn=document.createElement("button");btn.textContent="刪除";btn.className="btn-danger";btn.onclick=()=>delMachine(m);
+    li.appendChild(btn);ml.appendChild(li);
+  });
+  const sel=document.getElementById("selMachine");sel.innerHTML="";
+  store.machines.forEach(m=>sel.add(new Option(m,m)));
+  renderReasons();
+  const sl=document.getElementById("statusList");sl.innerHTML="";
+  store.statuses.forEach(s=>{
+    const li=document.createElement("li");li.textContent=s;
+    const btn=document.createElement("button");btn.textContent="刪除";btn.className="btn-danger";btn.onclick=()=>delStatus(s);
+    li.appendChild(btn);sl.appendChild(li);
+  });
+}
+function renderReasons(){
+  const m=document.getElementById("selMachine").value;
+  const rl=document.getElementById("reasonList");rl.innerHTML="";
+  if(!m)return;
+  (store.reasonsByMachine[m]||[]).forEach(r=>{
+    const li=document.createElement("li");li.textContent=r;
+    const btn=document.createElement("button");btn.textContent="刪除";btn.className="btn-danger";btn.onclick=()=>delReason(m,r);
+    li.appendChild(btn);rl.appendChild(li);
+  });
+}
+document.getElementById("selMachine").onchange=renderReasons;
+renderAll();
+</script>
+</body>
+</html>
