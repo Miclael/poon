@@ -5,45 +5,51 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>機台故障回報</title>
 <style>
-  body{font-family:"Noto Sans TC",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;padding:12px;background:#f9fafb;color:#111827}
-  .card{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
+  /* ===== 基本樣式（Mobile-first） ===== */
+  :root{--border:#d1d5db;--muted:#6b7280;--bg:#f9fafb;--card:#fff;--primary:#2563eb;--danger:#dc2626}
+  *{box-sizing:border-box}
+  body{font-family:"Noto Sans TC",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;padding:12px;background:var(--bg);color:#111827}
+  a{color:#2563eb;text-decoration:none}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
   label{font-weight:600}
   select,input,button{padding:.5rem .6rem;border:1px solid #9ca3af;border-radius:8px;background:#fff;font-size:1rem}
   input[type="datetime-local"]{padding:.45rem .5rem}
-  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:0.98rem}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.98rem}
   th,td{border:1px solid #e5e7eb;padding:.5rem;text-align:left;vertical-align:middle}
   th{background:#eef2f7}
   .btn{cursor:pointer}
-  .btn-primary{background:#2563eb;color:#fff;border-color:transparent}
-  .btn-danger{background:#dc2626;color:#fff;border-color:transparent}
+  .btn-primary{background:var(--primary);color:#fff;border-color:transparent}
+  .btn-danger{background:var(--danger);color:#fff;border-color:transparent}
   .btn-ghost{background:#fff}
-  .muted{color:#6b7280}
+  .muted{color:var(--muted)}
   .row{display:grid;grid-template-columns:1fr;gap:10px}
   @media(min-width:720px){.row{grid-template-columns:repeat(3,1fr)}}
   tr[data-row-index]{transition:background-color .15s}
   tr[data-row-index].active{background:#fff7ed}
   .msgbox{display:flex;gap:10px;flex-direction:column}
   .msgarea{
-    width:100%;min-height:6.8rem;box-sizing:border-box;
-    border:1px solid #d1d5db;border-radius:8px;padding:.6rem .7rem;
+    width:100%;min-height:6.8rem;border:1px solid var(--border);border-radius:8px;padding:.6rem .7rem;
     background:#f8fafc;font-family:inherit;font-size:1rem;line-height:1.5;white-space:pre-wrap
   }
   .msg-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
   .badge{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:999px;padding:.15rem .6rem;font-size:.85rem}
   option.placeholder{color:#9ca3af}
-  /* 時間工具列 */
   .time-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .time-tools .chip{border:1px solid #d1d5db;border-radius:999px;padding:.25rem .6rem;background:#fff;cursor:pointer}
+  .time-tools .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff;cursor:pointer}
   .range-row{display:flex;align-items:center;gap:8px}
   .range-row input[type="range"]{flex:1}
+
+  /* ===== Toast（頁內輕量提示） ===== */
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:.55rem .8rem;border-radius:8px;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
 </style>
 </head>
 <body>
 <h2 style="margin:0 0 8px">機台故障回報</h2>
-<a href="manage.html" target="_blank" class="muted">管理機台 / 原因 / 狀況（另開）</a>
+<a href="manage.html" target="_blank" class="muted" aria-label="開啟管理機台/原因/狀況（另開）">管理機台 / 原因 / 狀況（另開）</a>
 
 <!-- ===== 表單卡 ===== -->
-<div class="card">
+<div class="card" role="region" aria-label="新增回報表單">
   <div class="row">
     <div>
       <label>廠別：</label><br>
@@ -68,12 +74,12 @@
       <label for="faultTime">故障時間：</label><br>
       <input type="datetime-local" id="faultTime" aria-label="故障時間">
       <div class="time-tools" style="margin-top:6px">
-        <button class="chip" data-now>現在</button>
-        <button class="chip" data-add="-5">-5 分</button>
-        <button class="chip" data-add="-1">-1 分</button>
-        <button class="chip" data-add="1">+1 分</button>
-        <button class="chip" data-add="5">+5 分</button>
-        <button class="chip" data-add="15">+15 分</button>
+        <button class="chip" data-now type="button">現在</button>
+        <button class="chip" data-add="-5" type="button">-5 分</button>
+        <button class="chip" data-add="-1" type="button">-1 分</button>
+        <button class="chip" data-add="1" type="button">+1 分</button>
+        <button class="chip" data-add="5" type="button">+5 分</button>
+        <button class="chip" data-add="15" type="button">+15 分</button>
       </div>
       <div class="range-row" style="margin-top:6px">
         <span class="muted" style="min-width:4.5em;text-align:right">偏移</span>
@@ -88,21 +94,19 @@
     </div>
   </div>
   <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn btn-primary" id="submit">新增回報</button>
-    <button class="btn btn-ghost" id="resetForm">清空表單</button>
+    <button class="btn btn-primary" id="submit" type="button">新增回報</button>
+    <button class="btn btn-ghost" id="resetForm" type="button">清空表單</button>
   </div>
 </div>
 
 <!-- ===== 回報清單 ===== -->
-<div class="card">
+<div class="card" role="region" aria-label="回報清單">
   <h3 style="margin:0 0 6px">回報清單</h3>
   <div class="muted" style="margin-bottom:6px">點選任一列以產生訊息；可刪除單筆</div>
   <div style="overflow:auto">
     <table aria-label="回報清單">
       <thead>
-        <tr>
-          <th>#</th><th>廠別</th><th>機台</th><th>原因</th><th>時間</th><th>狀況</th><th>備註</th><th>操作</th>
-        </tr>
+        <tr><th>#</th><th>廠別</th><th>機台</th><th>原因</th><th>時間</th><th>狀況</th><th>備註</th><th>操作</th></tr>
       </thead>
       <tbody id="listBody"></tbody>
     </table>
@@ -118,45 +122,56 @@
     </div>
     <textarea id="msgText" class="msgarea" readonly placeholder="請先在上方清單點選一筆回報"></textarea>
     <div class="msg-toolbar">
-      <button class="btn btn-primary" id="copyMsg" aria-label="複製訊息">複製訊息</button>
+      <button class="btn btn-primary" id="copyMsg" aria-label="複製訊息" type="button">複製訊息</button>
+      <button class="btn btn-ghost" id="clearMsg" aria-label="清除訊息" type="button">清除</button>
       <span class="muted" id="copyHint" aria-live="polite"></span>
     </div>
     <div class="muted" id="extraNote" style="display:none"></div>
   </div>
 </div>
 
+<!-- Toast -->
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script src="store.js"></script>
 <script>
 /* ===========================================================
-   機台故障回報（刪除紀錄 + 時間滑動/快捷）
+   機台故障回報（共用 store.js；新增成功顯示 toast；輸入重置）
    =========================================================== */
 
-/* ===== 資料儲存 ===== */
-const STORE_KEY="fault_report_store_v3";
-let store=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
-if(!store.machines)store.machines=["鑽孔-1","AOI-1"];
-if(!store.reasonsByMachine)store.reasonsByMachine={"鑽孔-1":["主軸異常"],"AOI-1":["鏡頭異常"]};
-if(!store.statuses)store.statuses=["已派修","已修復"];
-if(!store.records)store.records=[];
-function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}}
-
-/* ===== DOM ===== */
+/* ===== 狀態與 DOM 參照 ===== */
+let store = getStore();           // 從 store.js 取得資料物件
 const selM=document.getElementById("machine");
 const selR=document.getElementById("reason");
 const selS=document.getElementById("status");
 const faultTime=document.getElementById("faultTime");
 const timeOffset=document.getElementById("timeOffset");
 const offsetLabel=document.getElementById("offsetLabel");
-
 const listBody=document.getElementById("listBody");
 const msgText=document.getElementById("msgText");
 const pickedHint=document.getElementById("pickedHint");
 const copyHint=document.getElementById("copyHint");
 const extraNote=document.getElementById("extraNote");
+const toastEl=document.getElementById("toast");
 
-/* ===== 下拉填充 ===== */
+let activeIndex=-1;
+
+/* ===== 小工具 ===== */
+// ===== 顯示 toast =====
+let toastTimer=null;
+function showToast(text){
+  toastEl.textContent=text;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500);
+}
+
+// ===== 下拉填充 =====
 function renderMachines(){
   selM.innerHTML="";
-  store.machines.forEach(m=>selM.add(new Option(m,m)));
+  const frag=document.createDocumentFragment();
+  store.machines.forEach(m=>frag.appendChild(new Option(m,m)));
+  selM.appendChild(frag);
   if(selM.options.length>0) selM.selectedIndex=0;
   renderReasons();
 }
@@ -165,42 +180,38 @@ function renderReasons(){
   const m=selM.value;
   if(!store.reasonsByMachine[m]) store.reasonsByMachine[m]=[];
   const list = store.reasonsByMachine[m];
+
   if(list.length===0){
     const opt = new Option('（尚無原因，請至管理頁新增）','');
     opt.className='placeholder';
     selR.add(opt);
     selR.disabled = true;
   }else{
-    list.forEach(r=>selR.add(new Option(r,r)));
+    const frag=document.createDocumentFragment();
+    list.forEach(r=>frag.appendChild(new Option(r,r)));
+    selR.appendChild(frag);
     selR.disabled = false;
     selR.selectedIndex = 0;
   }
 }
 function renderStatuses(){
   selS.innerHTML="";
-  store.statuses.forEach(s=>selS.add(new Option(s,s)));
+  const frag=document.createDocumentFragment();
+  store.statuses.forEach(s=>frag.appendChild(new Option(s,s)));
+  selS.appendChild(frag);
   if(selS.options.length>0) selS.selectedIndex=0;
 }
 
 /* ===== 清單渲染（含刪除） ===== */
-let activeIndex=-1;
 function renderList(){
   listBody.innerHTML="";
+  const frag=document.createDocumentFragment();
   store.records.forEach((r,i)=>{
     const tr=document.createElement("tr");
     tr.setAttribute("data-row-index", String(i));
     if(i===activeIndex) tr.classList.add("active");
 
-    // 單元格
-    const tdIdx = document.createElement('td'); tdIdx.textContent = String(i+1);
-    const tdPlant = document.createElement('td'); tdPlant.textContent = r.plant;
-    const tdM = document.createElement('td'); tdM.textContent = r.machine;
-    const tdReason = document.createElement('td'); tdReason.textContent = r.reason;
-    const tdTime = document.createElement('td'); tdTime.textContent = r.time;
-    const tdStatus = document.createElement('td'); tdStatus.textContent = r.status;
-    const tdNote = document.createElement('td'); tdNote.textContent = r.note || '';
-
-    // 操作（刪除）
+    const c = (txt)=>{const td=document.createElement('td'); td.textContent=txt; return td;}
     const tdOp = document.createElement('td');
     const delBtn = document.createElement('button');
     delBtn.className = 'btn btn-danger';
@@ -208,34 +219,19 @@ function renderList(){
     delBtn.setAttribute('data-del', String(i));
     tdOp.appendChild(delBtn);
 
-    tr.append(tdIdx,tdPlant,tdM,tdReason,tdTime,tdStatus,tdNote,tdOp);
-    listBody.appendChild(tr);
+    tr.append(
+      c(String(i+1)),
+      c(r.plant),
+      c(r.machine),
+      c(r.reason),
+      c(formatHHmm(r.time)),
+      c(r.status),
+      c(r.note || ''),
+      tdOp
+    );
+    frag.appendChild(tr);
   });
-}
-
-/* ===== 工具：時間格式/設定 ===== */
-function toLocalISO(datetime){
-  // 將 Date 轉成本地 ISO（yyyy-MM-ddTHH:mm，不含秒）
-  const t = (datetime instanceof Date) ? datetime : new Date(datetime);
-  const pad = n=>String(n).padStart(2,'0');
-  const y=t.getFullYear(), m=pad(t.getMonth()+1), d=pad(t.getDate()), h=pad(t.getHours()), min=pad(t.getMinutes());
-  return `${y}-${m}-${d}T${h}:${min}`;
-}
-function nowISO(){ return toLocalISO(new Date()); }
-function addMinutesISO(baseISO, minutes){
-  const dt = new Date(baseISO);
-  if (isNaN(dt.getTime())) return nowISO();
-  dt.setMinutes(dt.getMinutes()+minutes);
-  return toLocalISO(dt);
-}
-function formatHHmm(value){
-  try{
-    const d=new Date(value);
-    if(isNaN(d.getTime())) return "--:--";
-    const hh=String(d.getHours()).padStart(2,"0");
-    const mm=String(d.getMinutes()).padStart(2,"0");
-    return `${hh}:${mm}`;
-  }catch(e){return "--:--";}
+  listBody.appendChild(frag);
 }
 
 /* ===== 訊息組裝 ===== */
@@ -268,31 +264,32 @@ function updateMessage(index){
   }
 }
 
-/* ===== 事件 ===== */
-// 清單點選/刪除（事件委派）
+/* ===== 事件：清單點選 / 刪除（事件委派） ===== */
 listBody.addEventListener('click',e=>{
-  const delIdx = e.target.getAttribute && e.target.getAttribute('data-del');
+  const target = e.target;
+  if(!(target instanceof HTMLElement)) return;
+
+  const delIdx = target.getAttribute('data-del');
   if(delIdx!=null){
-    // 刪除這一筆
     const idx = Number(delIdx);
     if(confirm('確定要刪除此筆回報？')){
       store.records.splice(idx,1);
-      save();
-      // 若刪除的是目前選中項，清空訊息；若刪除之前的索引，修正 activeIndex
+      saveStore(store);
       if(activeIndex===idx){ activeIndex=-1; msgText.value=''; pickedHint.textContent='尚未選取回報'; extraNote.style.display="none"; }
       else if(activeIndex>idx){ activeIndex -= 1; }
       renderList();
+      showToast('已刪除');
     }
     return;
   }
 
-  const tr=e.target.closest('tr[data-row-index]'); 
+  const tr=target.closest('tr[data-row-index]');
   if(!tr) return;
   updateMessage(Number(tr.getAttribute('data-row-index')));
   document.querySelector('.msgbox').scrollIntoView({behavior:'smooth',block:'start'});
 });
 
-// 新增回報
+/* ===== 事件：新增回報 ===== */
 document.getElementById("submit").addEventListener('click',()=>{
   try{
     const plant=document.querySelector('input[name="plant"]:checked')?.value || 'P5';
@@ -300,36 +297,40 @@ document.getElementById("submit").addEventListener('click',()=>{
     const reason = selR.disabled ? '' : selR.value;
     const status = selS.value;
     const time = faultTime.value || nowISO();
-    const note=document.getElementById("note").value;
+    const note=document.getElementById("note").value.trim();
 
-    if(!machine){ alert("請選擇機台"); return; }
-    if(selR.disabled || !reason){ alert("此機台尚無故障原因，請先至管理頁新增"); return; }
-    if(!status){ alert("請選擇處理狀況"); return; }
+    if(!machine){ showToast("請選擇機台"); return; }
+    if(selR.disabled || !reason){ showToast("此機台尚無故障原因，請先至管理頁新增"); return; }
+    if(!status){ showToast("請選擇處理狀況"); return; }
 
     store.records.push({plant,machine,reason,status,time,note});
-    save(); renderList();
+    saveStore(store);
+    renderList();
 
-    // 重設（保留機台/原因/狀況選擇），時間回到現在、滑桿歸零
+    // 重設（保留機台/原因/狀況選擇），時間回到現在、滑桿歸零、備註清空
     faultTime.value = nowISO();
     timeOffset.value = 0; offsetLabel.textContent = "±0 分";
     document.getElementById("note").value = "";
 
-    alert("已新增回報");
-  }catch(err){ alert("發生錯誤，請重試"); }
+    showToast("已新增回報 ✔");
+  }catch(err){
+    showToast("發生錯誤，請重試");
+  }
 });
 
-// 表單重設
+/* ===== 表單重設 ===== */
 document.getElementById("resetForm").addEventListener('click',()=>{
   document.querySelector('input[name="plant"][value="P5"]').checked=true;
   faultTime.value = nowISO();
   timeOffset.value = 0; offsetLabel.textContent = "±0 分";
   document.getElementById("note").value="";
+  showToast("表單已清空");
 });
 
-// 機台切換 → 重新載入原因
+/* ===== 下拉互動 ===== */
 selM.addEventListener('change', renderReasons);
 
-// 複製訊息
+/* ===== 複製 / 清除訊息 ===== */
 document.getElementById("copyMsg").addEventListener('click', async ()=>{
   copyHint.textContent="";
   const text=msgText.value?.trim();
@@ -337,40 +338,40 @@ document.getElementById("copyMsg").addEventListener('click', async ()=>{
   try{
     await navigator.clipboard.writeText(text);
     copyHint.textContent="已複製 ✔";
+    showToast("已複製到剪貼簿");
   }catch(e){
     msgText.removeAttribute('readonly'); msgText.focus(); msgText.select();
     const ok=document.execCommand && document.execCommand('copy');
     msgText.setAttribute('readonly','readonly');
     copyHint.textContent= ok ? "已複製 ✔" : "複製失敗，請長按選取後複製";
+    if(ok) showToast("已複製到剪貼簿");
   }
+});
+document.getElementById("clearMsg").addEventListener('click', ()=>{
+  msgText.value="";
+  pickedHint.textContent="尚未選取回報";
+  extraNote.style.display="none";
 });
 
 /* ===== 時間：滑動與快捷 ===== */
-// 初始化「現在」
 function initNow(){
   faultTime.value = nowISO();
   timeOffset.value = 0;
   offsetLabel.textContent = "±0 分";
 }
-// 快捷：現在
-document.querySelector('[data-now]').addEventListener('click', ()=>{
-  initNow();
-});
-// 快捷：加減分鐘
+document.querySelector('[data-now]').addEventListener('click', initNow);
 document.querySelectorAll('[data-add]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const delta = Number(btn.getAttribute('data-add'))||0;
     const baseISO = faultTime.value || nowISO();
     const newISO = addMinutesISO(baseISO, delta);
     faultTime.value = newISO;
-    // 同步滑桿（以現在為基準顯示偏移）
     const diff = Math.round((new Date(newISO) - new Date(nowISO()))/60000);
     const clipped = Math.max(-120, Math.min(120, diff));
     timeOffset.value = clipped;
     offsetLabel.textContent = (clipped>0?`+${clipped}`:clipped===0?'±0':String(clipped)) + " 分";
   });
 });
-// 滑動：以「現在」為基準偏移
 timeOffset.addEventListener('input', ()=>{
   const offset = Number(timeOffset.value)||0;
   faultTime.value = addMinutesISO(nowISO(), offset);

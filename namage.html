@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管理機台/原因/狀況</title>
+<style>
+  :root{--border:#d1d5db;--muted:#6b7280;--bg:#f9fafb;--card:#fff;--danger:#dc2626;--ok:#16a34a}
+  *{box-sizing:border-box}
+  body{font-family:"Noto Sans TC",sans-serif;padding:12px;background:var(--bg)}
+  a{color:#2563eb;text-decoration:none}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px}
+  h2,h3{margin:0 0 .6rem}
+  ul{list-style:none;padding:0;margin:.5rem 0 0}
+  li{margin:.3rem 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  input,select,button{font-size:1rem;padding:.45rem .55rem;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .btn-danger{background:var(--danger);color:#fff;border:none;padding:.35rem .6rem;cursor:pointer}
+  .row{display:grid;grid-template-columns:1fr;gap:8px}
+  .muted{color:var(--muted)}
+  .hint{font-size:.9rem;color:var(--ok);margin-left:.3rem}
+  .toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:.55rem .8rem;border-radius:8px;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+</style>
+</head>
+<body>
+<h2>管理項目</h2>
+<a href="index.html">← 回到回報頁</a>
+
+<div class="card" role="region" aria-label="管理機台">
+  <h3>機台</h3>
+  <div class="toolbar">
+    <input id="newMachine" placeholder="新增機台（例：鑽孔-1）" aria-label="新增機台">
+    <button id="btnAddMachine" type="button">新增</button>
+    <span id="mHint" class="hint" aria-live="polite"></span>
+  </div>
+  <ul id="machineList" aria-label="機台清單"></ul>
+</div>
+
+<div class="card" role="region" aria-label="管理原因">
+  <h3>故障原因（依機台）</h3>
+  <div class="row">
+    <select id="selMachine" aria-label="選擇機台"></select>
+    <div class="toolbar">
+      <input id="newReason" placeholder="新增原因（例：主軸異常）" aria-label="新增原因">
+      <button id="btnAddReason" type="button">新增</button>
+      <span id="rHint" class="hint" aria-live="polite"></span>
+    </div>
+  </div>
+  <ul id="reasonList" aria-label="原因清單"></ul>
+</div>
+
+<div class="card" role="region" aria-label="管理狀況">
+  <h3>處理狀況</h3>
+  <div class="toolbar">
+    <input id="newStatus" placeholder="新增狀況（例：已派修）" aria-label="新增狀況">
+    <button id="btnAddStatus" type="button">新增</button>
+    <span id="sHint" class="hint" aria-live="polite"></span>
+  </div>
+  <ul id="statusList" aria-label="狀況清單"></ul>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script src="store.js"></script>
+<script>
+/* ===========================================================
+   管理機台/原因/狀況（共用 store.js；新增後清空 + 提示）
+   =========================================================== */
+let store = getStore();
+
+const el = {
+  newMachine: document.getElementById('newMachine'),
+  btnAddMachine: document.getElementById('btnAddMachine'),
+  mHint: document.getElementById('mHint'),
+  machineList: document.getElementById('machineList'),
+
+  selMachine: document.getElementById('selMachine'),
+  newReason: document.getElementById('newReason'),
+  btnAddReason: document.getElementById('btnAddReason'),
+  reasonList: document.getElementById('reasonList'),
+  rHint: document.getElementById('rHint'),
+
+  newStatus: document.getElementById('newStatus'),
+  btnAddStatus: document.getElementById('btnAddStatus'),
+  statusList: document.getElementById('statusList'),
+  sHint: document.getElementById('sHint'),
+
+  toast: document.getElementById('toast'),
+};
+
+/* ===== Toast ===== */
+let toastTimer=null;
+function showToast(text){
+  el.toast.textContent=text;
+  el.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.toast.classList.remove('show'),1500);
+}
+
+/* ===== 渲染 ===== */
+function renderMachines(){
+  // 清單
+  el.machineList.innerHTML="";
+  const frag=document.createDocumentFragment();
+  store.machines.forEach(m=>{
+    const li=document.createElement('li');
+    const span=document.createElement('span'); span.textContent=m;
+    const btn=document.createElement('button'); btn.textContent='刪除'; btn.className='btn-danger';
+    btn.addEventListener('click',()=>delMachine(m));
+    li.append(span,btn);
+    frag.appendChild(li);
+  });
+  el.machineList.appendChild(frag);
+
+  // 下拉
+  el.selMachine.innerHTML="";
+  const sfrag=document.createDocumentFragment();
+  store.machines.forEach(m=>sfrag.appendChild(new Option(m,m)));
+  el.selMachine.appendChild(sfrag);
+  if(el.selMachine.options.length>0 && el.selMachine.selectedIndex<0) el.selMachine.selectedIndex=0;
+}
+
+function renderReasons(){
+  const m=el.selMachine.value;
+  el.reasonList.innerHTML="";
+  if(!m) return;
+  const frag=document.createDocumentFragment();
+  (store.reasonsByMachine[m]||[]).forEach(r=>{
+    const li=document.createElement('li');
+    const span=document.createElement('span'); span.textContent=r;
+    const btn=document.createElement('button'); btn.textContent='刪除'; btn.className='btn-danger';
+    btn.addEventListener('click',()=>delReason(m,r));
+    li.append(span,btn);
+    frag.appendChild(li);
+  });
+  el.reasonList.appendChild(frag);
+}
+
+function renderStatuses(){
+  el.statusList.innerHTML="";
+  const frag=document.createDocumentFragment();
+  store.statuses.forEach(s=>{
+    const li=document.createElement('li');
+    const span=document.createElement('span'); span.textContent=s;
+    const btn=document.createElement('button'); btn.textContent='刪除'; btn.className='btn-danger';
+    btn.addEventListener('click',()=>delStatus(s));
+    li.append(span,btn);
+    frag.appendChild(li);
+  });
+  el.statusList.appendChild(frag);
+}
+
+function renderAll(){ renderMachines(); renderReasons(); renderStatuses(); }
+
+/* ===== 動作 ===== */
+function addMachine(){
+  const v=el.newMachine.value.trim();
+  if(!v){ el.mHint.textContent="請輸入機台名稱"; return; }
+  if(store.machines.includes(v)){ el.mHint.textContent="已存在"; return; }
+  store.machines.push(v);
+  store.reasonsByMachine[v]=[];
+  saveStore(store);
+  renderAll();
+  el.newMachine.value="";
+  el.mHint.textContent="已新增 ✔";
+  showToast("已新增機台");
+}
+
+function delMachine(m){
+  if(!confirm("刪除機台 "+m+" ?")) return;
+  store.machines=store.machines.filter(x=>x!==m);
+  delete store.reasonsByMachine[m];
+  saveStore(store);
+  renderAll();
+  showToast("已刪除機台");
+}
+
+function addReason(){
+  const m=el.selMachine.value;
+  const v=el.newReason.value.trim();
+  if(!m){ el.rHint.textContent="請先選機台"; return; }
+  if(!v){ el.rHint.textContent="請輸入原因"; return; }
+  store.reasonsByMachine[m] = store.reasonsByMachine[m] || [];
+  if(store.reasonsByMachine[m].includes(v)){ el.rHint.textContent="已存在"; return; }
+  store.reasonsByMachine[m].push(v);
+  saveStore(store);
+  renderReasons();
+  el.newReason.value="";
+  el.rHint.textContent="已新增 ✔";
+  showToast("已新增原因");
+}
+
+function delReason(m,r){
+  if(!confirm("刪除原因 "+r+" ?")) return;
+  store.reasonsByMachine[m]=(store.reasonsByMachine[m]||[]).filter(x=>x!==r);
+  saveStore(store);
+  renderReasons();
+  showToast("已刪除原因");
+}
+
+function addStatus(){
+  const v=el.newStatus.value.trim();
+  if(!v){ el.sHint.textContent="請輸入狀況"; return; }
+  if(store.statuses.includes(v)){ el.sHint.textContent="已存在"; return; }
+  store.statuses.push(v);
+  saveStore(store);
+  renderStatuses();
+  el.newStatus.value="";
+  el.sHint.textContent="已新增 ✔";
+  showToast("已新增狀況");
+}
+
+function delStatus(s){
+  if(!confirm("刪除狀況 "+s+" ?")) return;
+  store.statuses=store.statuses.filter(x=>x!==s);
+  saveStore(store);
+  renderStatuses();
+  showToast("已刪除狀況");
+}
+
+/* ===== 綁定事件 ===== */
+el.btnAddMachine.addEventListener('click', addMachine);
+el.btnAddReason.addEventListener('click', addReason);
+el.btnAddStatus.addEventListener('click', addStatus);
+el.selMachine.addEventListener('change', renderReasons);
+
+/* ===== 初始化 ===== */
+function init(){
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
