@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>早班產出回報（iPhone 內建鍵盤＋人工複製方案）</title>
+<style>
+  :root{
+    --bg:#f7f7f7; --card:#fff; --text:#222; --muted:#666;
+    --pri:#0a66ff; --pri-d:#084fc3; --bd:#dcdcdc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",Arial;background:var(--bg);color:var(--text);padding:14px}
+  h2{text-align:center;margin:4px 0 12px}
+  .row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0}
+  .row label{flex:1;font-size:16px}
+  .row input{flex:1;padding:10px;font-size:18px;text-align:center;border:1px solid var(--bd);border-radius:8px;background:#fff;outline:none}
+  .row input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(10,102,255,.12)}
+  .btn{width:100%;padding:12px;font-size:16px;font-weight:700;border:none;border-radius:10px;background:var(--pri);color:#fff;margin-top:12px}
+  .btn:active{background:var(--pri-d)}
+  .hint{font-size:13px;color:var(--muted);text-align:center;margin-top:6px}
+
+  /* 底部面板（避免被鍵盤頂起，使用 fixed） */
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top-left-radius:16px;border-top-right-radius:16px;box-shadow:0 -10px 30px rgba(0,0,0,.15);transform:translateY(100%);transition:transform .25s ease;z-index:50}
+  .sheet.show{transform:translateY(0)}
+  .sheet-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--bd)}
+  .sheet-ttl{font-weight:800}
+  .sheet-btn{border:none;background:#eee;border-radius:10px;padding:8px 12px}
+  .sheet-bd{padding:10px 14px}
+  .sheet-actions{display:flex;gap:10px;margin-top:10px}
+  .sheet-actions button{flex:1;padding:12px;border:none;border-radius:10px;font-size:15px}
+  .primary{background:var(--pri);color:#fff}
+  .secondary{background:#eee}
+  /* 可選文字區：用 textarea，iOS 好長按；字級偏大 */
+  #resultBox{width:100%;height:230px;border:1px solid var(--bd);border-radius:10px;padding:10px;font-size:18px;line-height:1.6;resize:vertical}
+</style>
+</head>
+<body>
+  <h2 id="title">早班產出回報</h2>
+
+  <!-- 使用 iPhone 內建鍵盤（含小數點） -->
+  <div class="row"><label>鑽靶</label><input type="text" inputmode="decimal" data-name="鑽靶" placeholder="數字或小數"></div>
+  <div class="row"><label>內A</label><input type="text" inputmode="decimal" data-name="內A" placeholder="數字或小數"></div>
+  <div class="row"><label>內V</label><input type="text" inputmode="decimal" data-name="內V" placeholder="數字或小數"></div>
+  <div class="row"><label>內檢</label><input type="text" inputmode="decimal" data-name="內檢" placeholder="數字或小數"></div>
+  <div class="row"><label>外A</label><input type="text" inputmode="decimal" data-name="外A" placeholder="數字或小數"></div>
+  <div class="row"><label>外V</label><input type="text" inputmode="decimal" data-name="外V" placeholder="數字或小數"></div>
+  <div class="row"><label>外檢</label><input type="text" inputmode="decimal" data-name="外檢" placeholder="數字或小數"></div>
+  <div class="row"><label>補線</label><input type="text" inputmode="decimal" data-name="補線" placeholder="數字或小數"></div>
+  <div class="row"><label>CAM</label><input type="text" inputmode="decimal" data-name="CAM" placeholder="數字或小數"></div>
+
+  <button class="btn" id="copyBtn">📋 複製結果</button>
+  <div class="hint">若裝置限制剪貼簿，會改成「顯示結果 → 全選 → 長按複製」；也可用「分享」。</div>
+
+  <!-- 底部面板：顯示結果，提供全選／分享 -->
+  <section class="sheet" id="sheet">
+    <div class="sheet-hd">
+      <div class="sheet-ttl">結果預覽</div>
+      <button class="sheet-btn" id="closeSheet">關閉</button>
+    </div>
+    <div class="sheet-bd">
+      <textarea id="resultBox" readonly aria-label="產出結果"></textarea>
+      <div class="sheet-actions">
+        <button class="secondary" id="selectAllBtn">全選</button>
+        <button class="primary" id="shareBtn">系統分享</button>
+      </div>
+      <div class="hint" style="margin-top:8px">若無法分享：請先按「全選」→ 在選取範圍上 <b>長按</b> → 複製。</div>
+    </div>
+  </section>
+
+<script>
+(function setTodayTitle(){
+  const now=new Date();
+  document.getElementById('title').textContent=`${now.getMonth()+1}/${now.getDate()}早班產出回報`;
+})();
+
+function buildOutput(){
+  const title=document.getElementById('title').textContent;
+  const lines=[title];
+  document.querySelectorAll('input[data-name]').forEach(inp=>{
+    const val=(inp.value||'').trim();
+    lines.push(`${inp.dataset.name} ${val}`);
+    if(inp.dataset.name==='內檢') lines.push(''); // 內檢後空一行
+  });
+  return lines.join('\n');
+}
+
+// 打開/關閉底部面板
+const sheet=document.getElementById('sheet');
+const resultBox=document.getElementById('resultBox');
+document.getElementById('closeSheet').addEventListener('click',()=>{sheet.classList.remove('show')});
+
+// 顯示結果（不做程式複製，交給使用者動作）
+document.getElementById('copyBtn').addEventListener('click',()=>{
+  resultBox.value = buildOutput();
+  sheet.classList.add('show');
+  // 捲到最上，避免有時聚焦被鍵盤擋住
+  setTimeout(()=>{resultBox.scrollTop=0;},50);
+});
+
+// 一鍵全選（iOS/Google App 最穩方式）
+document.getElementById('selectAllBtn').addEventListener('click',()=>{
+  // 解除 readonly 才能選取範圍（選完再設回）
+  const wasRo = resultBox.hasAttribute('readonly');
+  if(wasRo) resultBox.removeAttribute('readonly');
+  resultBox.focus();
+  resultBox.setSelectionRange(0, resultBox.value.length);
+  // iOS 有時需要再呼叫一次確保選到
+  setTimeout(()=>{
+    resultBox.setSelectionRange(0, resultBox.value.length);
+    if(wasRo) resultBox.setAttribute('readonly','');
+  }, 0);
+});
+
+// 系統分享（若裝置支援）
+document.getElementById('shareBtn').addEventListener('click', async ()=>{
+  const text = resultBox.value || buildOutput();
+  try{
+    if(navigator.share){
+      await navigator.share({ text });
+      return;
+    }
+    // 若不支援 share，就先全選，提示長按複製
+    document.getElementById('selectAllBtn').click();
+    alert('此瀏覽器不支援分享，請長按選取範圍進行複製。');
+  }catch(_){
+    // 失敗也退回全選指引
+    document.getElementById('selectAllBtn').click();
+    alert('分享被取消或失敗，請長按選取範圍進行複製。');
+  }
+});
+</script>
+</body>
+</html>
