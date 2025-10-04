@@ -1,391 +1,197 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>機台故障回報</title>
-<style>
-  /* ===== 基本樣式（Mobile-first） ===== */
-  :root{--border:#d1d5db;--muted:#6b7280;--bg:#f9fafb;--card:#fff;--primary:#2563eb;--danger:#dc2626}
-  *{box-sizing:border-box}
-  body{font-family:"Noto Sans TC",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;padding:12px;background:var(--bg);color:#111827}
-  a{color:#2563eb;text-decoration:none}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
-  label{font-weight:600}
-  select,input,button{padding:.5rem .6rem;border:1px solid #9ca3af;border-radius:8px;background:#fff;font-size:1rem}
-  input[type="datetime-local"]{padding:.45rem .5rem}
-  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.98rem}
-  th,td{border:1px solid #e5e7eb;padding:.5rem;text-align:left;vertical-align:middle}
-  th{background:#eef2f7}
-  .btn{cursor:pointer}
-  .btn-primary{background:var(--primary);color:#fff;border-color:transparent}
-  .btn-danger{background:var(--danger);color:#fff;border-color:transparent}
-  .btn-ghost{background:#fff}
-  .muted{color:var(--muted)}
-  .row{display:grid;grid-template-columns:1fr;gap:10px}
-  @media(min-width:720px){.row{grid-template-columns:repeat(3,1fr)}}
-  tr[data-row-index]{transition:background-color .15s}
-  tr[data-row-index].active{background:#fff7ed}
-  .msgbox{display:flex;gap:10px;flex-direction:column}
-  .msgarea{
-    width:100%;min-height:6.8rem;border:1px solid var(--border);border-radius:8px;padding:.6rem .7rem;
-    background:#f8fafc;font-family:inherit;font-size:1rem;line-height:1.5;white-space:pre-wrap
-  }
-  .msg-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
-  .badge{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:999px;padding:.15rem .6rem;font-size:.85rem}
-  option.placeholder{color:#9ca3af}
-  .time-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .time-tools .chip{border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff;cursor:pointer}
-  .range-row{display:flex;align-items:center;gap:8px}
-  .range-row input[type="range"]{flex:1}
-
-  /* ===== Toast（頁內輕量提示） ===== */
-  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:.55rem .8rem;border-radius:8px;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>機台故障回報</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<h2 style="margin:0 0 8px">機台故障回報</h2>
-<a href="manage.html" target="_blank" class="muted" aria-label="開啟管理機台/原因/狀況（另開）">管理機台 / 原因 / 狀況（另開）</a>
+<body class="bg-gray-100 min-h-screen">
 
-<!-- ===== 表單卡 ===== -->
-<div class="card" role="region" aria-label="新增回報表單">
-  <div class="row">
-    <div>
-      <label>廠別：</label><br>
-      <label><input type="radio" name="plant" value="P1"> P1</label>
-      <label style="margin-left:10px"><input type="radio" name="plant" value="P5" checked> P5</label>
-    </div>
-    <div>
-      <label for="machine">機台：</label><br>
-      <select id="machine" aria-label="機台"></select>
-    </div>
-    <div>
-      <label for="reason">故障原因：</label><br>
-      <select id="reason" aria-label="故障原因"></select>
-    </div>
-    <div>
-      <label for="status">處理狀況：</label><br>
-      <select id="status" aria-label="處理狀況"></select>
-    </div>
+  <div class="max-w-3xl mx-auto p-4 sm:p-6">
+    <!-- 標題 -->
+    <header class="mb-4">
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">機台故障回報</h1>
+      <p class="text-gray-600 mt-1">填寫表單 → 產生訊息卡片 → 一鍵複製 / 分享 LINE / 刪除</p>
+    </header>
 
-    <!-- 故障時間 + 滑動/快捷 -->
-    <div>
-      <label for="faultTime">故障時間：</label><br>
-      <input type="datetime-local" id="faultTime" aria-label="故障時間">
-      <div class="time-tools" style="margin-top:6px">
-        <button class="chip" data-now type="button">現在</button>
-        <button class="chip" data-add="-5" type="button">-5 分</button>
-        <button class="chip" data-add="-1" type="button">-1 分</button>
-        <button class="chip" data-add="1" type="button">+1 分</button>
-        <button class="chip" data-add="5" type="button">+5 分</button>
-        <button class="chip" data-add="15" type="button">+15 分</button>
+    <!-- 表單 -->
+    <section class="bg-white rounded-2xl shadow p-5 sm:p-6 space-y-4">
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">廠別</label>
+          <select id="factory" class="w-full border rounded-lg p-2.5">
+            <option value="P1">P1</option>
+            <option value="P5">P5</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">機台</label>
+          <input id="machine" type="text" placeholder="例如：機台3" class="w-full border rounded-lg p-2.5">
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">故障原因</label>
+          <input id="reason" type="text" placeholder="例如：Sensor Error" class="w-full border rounded-lg p-2.5">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">處理狀態</label>
+          <select id="status" class="w-full border rounded-lg p-2.5">
+            <option value="未處理">未處理</option>
+            <option value="已修復">已修復</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">故障時間</label>
+          <input id="time" type="datetime-local" class="w-full border rounded-lg p-2.5">
+          <div class="flex flex-wrap gap-2 mt-2">
+            <button data-shift="-15" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">-15 分</button>
+            <button data-shift="-5" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">-5 分</button>
+            <button data-shift="-1" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">-1 分</button>
+            <button id="nowBtn" class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200">現在</button>
+            <button data-shift="1" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">+1 分</button>
+            <button data-shift="5" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">+5 分</button>
+            <button data-shift="15" class="timeShift px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">+15 分</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">偏移（分鐘）</label>
+          <input id="offset" type="number" value="0" class="w-full border rounded-lg p-2.5" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+          <textarea id="note" rows="2" placeholder="可填寫描述/處置方式/聯絡人"
+            class="w-full border rounded-lg p-2.5"></textarea>
+        </div>
       </div>
-      <div class="range-row" style="margin-top:6px">
-        <span class="muted" style="min-width:4.5em;text-align:right">偏移</span>
-        <input id="timeOffset" type="range" min="-120" max="120" step="1" value="0" aria-label="時間偏移（分鐘）">
-        <span id="offsetLabel" class="muted">±0 分</span>
+
+      <div class="flex gap-3 pt-2">
+        <button id="addBtn"
+          class="flex-1 sm:flex-none sm:w-40 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg">
+          ➕ 新增回報
+        </button>
+        <button id="clearBtn"
+          class="flex-1 sm:flex-none sm:w-40 bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-2.5 rounded-lg">
+          清空表單
+        </button>
       </div>
-    </div>
+    </section>
 
-    <div>
-      <label for="note">備註：</label><br>
-      <input type="text" id="note" style="width:100%" placeholder="選填：已通知維修 / 等待零件 …">
-    </div>
+    <!-- 清單 -->
+    <section class="mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-bold">回報清單</h2>
+        <input id="search" type="search" placeholder="搜尋：廠別/機台/原因/備註" class="border rounded-lg p-2 text-sm w-60">
+      </div>
+      <div id="messageContainer" class="space-y-3"></div>
+      <p id="emptyHint" class="text-gray-500 text-sm mt-3 hidden">目前沒有資料，請先新增回報。</p>
+    </section>
   </div>
-  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn btn-primary" id="submit" type="button">新增回報</button>
-    <button class="btn btn-ghost" id="resetForm" type="button">清空表單</button>
-  </div>
-</div>
 
-<!-- ===== 回報清單 ===== -->
-<div class="card" role="region" aria-label="回報清單">
-  <h3 style="margin:0 0 6px">回報清單</h3>
-  <div class="muted" style="margin-bottom:6px">點選任一列以產生訊息；可刪除單筆</div>
-  <div style="overflow:auto">
-    <table aria-label="回報清單">
-      <thead>
-        <tr><th>#</th><th>廠別</th><th>機台</th><th>原因</th><th>時間</th><th>狀況</th><th>備註</th><th>操作</th></tr>
-      </thead>
-      <tbody id="listBody"></tbody>
-    </table>
-  </div>
-</div>
+  <script>
+    // 工具
+    function pad(n){return String(n).padStart(2,'0')}
+    function toDatetimeLocalValue(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+    function fromDatetimeLocalValue(val){if(!val)return null;const[date,time]=val.split('T');const[y,m,d]=date.split('-').map(Number);const[hh,mm]=time.split(':').map(Number);return new Date(y,m-1,d,hh,mm)}
+    function formatForMessage(d){return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`}
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 
-<!-- ===== 訊息產生區 ===== -->
-<div class="card">
-  <div class="msgbox" role="region" aria-label="訊息產生區">
-    <div class="msg-toolbar">
-      <strong>訊息產生區</strong>
-      <span id="pickedHint" class="badge">尚未選取回報</span>
-    </div>
-    <textarea id="msgText" class="msgarea" readonly placeholder="請先在上方清單點選一筆回報"></textarea>
-    <div class="msg-toolbar">
-      <button class="btn btn-primary" id="copyMsg" aria-label="複製訊息" type="button">複製訊息</button>
-      <button class="btn btn-ghost" id="clearMsg" aria-label="清除訊息" type="button">清除</button>
-      <span class="muted" id="copyHint" aria-live="polite"></span>
-    </div>
-    <div class="muted" id="extraNote" style="display:none"></div>
-  </div>
-</div>
+    // 狀態
+    let messages = JSON.parse(localStorage.getItem('messages') || '[]')
+    const timeInput=document.getElementById('time')
+    timeInput.value=toDatetimeLocalValue(new Date())
 
-<!-- Toast -->
-<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    // 時間快捷
+    document.getElementById('nowBtn').addEventListener('click',()=>{timeInput.value=toDatetimeLocalValue(new Date())})
+    document.querySelectorAll('.timeShift').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const shift=+btn.dataset.shift
+        const base=fromDatetimeLocalValue(timeInput.value)||new Date()
+        base.setMinutes(base.getMinutes()+shift)
+        timeInput.value=toDatetimeLocalValue(base)
+      })
+    })
 
-<script src="store.js"></script>
-<script>
-/* ===========================================================
-   機台故障回報（共用 store.js；新增成功顯示 toast；輸入重置）
-   =========================================================== */
+    const f=factory,m=machine,r=reason,s=status,o=offset,n=note
+    document.getElementById('addBtn').addEventListener('click',()=>{
+      const factory=f.value.trim(),machine=m.value.trim(),reason=r.value.trim(),status=s.value,note=n.value.trim(),offset=+o.value||0
+      let t=fromDatetimeLocalValue(timeInput.value)||new Date()
+      t.setMinutes(t.getMinutes()+offset)
+      if(!factory||!machine||!reason){alert('請填寫完整資訊');return}
+      messages.unshift({factory,machine,reason,status,timeISO:t.toISOString(),note})
+      saveAndRender()
+      clearForm()
+    })
+    document.getElementById('clearBtn').addEventListener('click',clearForm)
+    document.getElementById('search').addEventListener('input',renderMessages)
 
-/* ===== 狀態與 DOM 參照 ===== */
-let store = getStore();           // 從 store.js 取得資料物件
-const selM=document.getElementById("machine");
-const selR=document.getElementById("reason");
-const selS=document.getElementById("status");
-const faultTime=document.getElementById("faultTime");
-const timeOffset=document.getElementById("timeOffset");
-const offsetLabel=document.getElementById("offsetLabel");
-const listBody=document.getElementById("listBody");
-const msgText=document.getElementById("msgText");
-const pickedHint=document.getElementById("pickedHint");
-const copyHint=document.getElementById("copyHint");
-const extraNote=document.getElementById("extraNote");
-const toastEl=document.getElementById("toast");
+    function clearForm(){m.value='';r.value='';s.value='未處理';n.value='';o.value=0}
+    function saveAndRender(){localStorage.setItem('messages',JSON.stringify(messages));renderMessages()}
 
-let activeIndex=-1;
-
-/* ===== 小工具 ===== */
-// ===== 顯示 toast =====
-let toastTimer=null;
-function showToast(text){
-  toastEl.textContent=text;
-  toastEl.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500);
-}
-
-// ===== 下拉填充 =====
-function renderMachines(){
-  selM.innerHTML="";
-  const frag=document.createDocumentFragment();
-  store.machines.forEach(m=>frag.appendChild(new Option(m,m)));
-  selM.appendChild(frag);
-  if(selM.options.length>0) selM.selectedIndex=0;
-  renderReasons();
-}
-function renderReasons(){
-  selR.innerHTML="";
-  const m=selM.value;
-  if(!store.reasonsByMachine[m]) store.reasonsByMachine[m]=[];
-  const list = store.reasonsByMachine[m];
-
-  if(list.length===0){
-    const opt = new Option('（尚無原因，請至管理頁新增）','');
-    opt.className='placeholder';
-    selR.add(opt);
-    selR.disabled = true;
-  }else{
-    const frag=document.createDocumentFragment();
-    list.forEach(r=>frag.appendChild(new Option(r,r)));
-    selR.appendChild(frag);
-    selR.disabled = false;
-    selR.selectedIndex = 0;
-  }
-}
-function renderStatuses(){
-  selS.innerHTML="";
-  const frag=document.createDocumentFragment();
-  store.statuses.forEach(s=>frag.appendChild(new Option(s,s)));
-  selS.appendChild(frag);
-  if(selS.options.length>0) selS.selectedIndex=0;
-}
-
-/* ===== 清單渲染（含刪除） ===== */
-function renderList(){
-  listBody.innerHTML="";
-  const frag=document.createDocumentFragment();
-  store.records.forEach((r,i)=>{
-    const tr=document.createElement("tr");
-    tr.setAttribute("data-row-index", String(i));
-    if(i===activeIndex) tr.classList.add("active");
-
-    const c = (txt)=>{const td=document.createElement('td'); td.textContent=txt; return td;}
-    const tdOp = document.createElement('td');
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-danger';
-    delBtn.textContent = '刪除';
-    delBtn.setAttribute('data-del', String(i));
-    tdOp.appendChild(delBtn);
-
-    tr.append(
-      c(String(i+1)),
-      c(r.plant),
-      c(r.machine),
-      c(r.reason),
-      c(formatHHmm(r.time)),
-      c(r.status),
-      c(r.note || ''),
-      tdOp
-    );
-    frag.appendChild(tr);
-  });
-  listBody.appendChild(frag);
-}
-
-/* ===== 訊息組裝 ===== */
-function buildMessage(r){
-  const hhmm = formatHHmm(r.time);
-  const L1 = "報告副理 課長";
-  const L2 = `${r.plant}${r.machine} ${hhmm}因${r.reason}目前${r.status}`;
-  const L3 = "請知悉";
-  return `${L1}\n${L2}\n${L3}`;
-}
-function updateMessage(index){
-  activeIndex = index;
-  Array.from(listBody.querySelectorAll('tr[data-row-index]')).forEach(tr=>{
-    tr.classList.toggle('active', Number(tr.getAttribute('data-row-index'))===activeIndex);
-  });
-  const r = store.records[activeIndex];
-  if(!r){
-    pickedHint.textContent="尚未選取回報";
-    msgText.value="";
-    extraNote.style.display="none";
-    return;
-  }
-  pickedHint.textContent=`已選取：#${activeIndex+1}（${r.machine}）`;
-  msgText.value=buildMessage(r);
-  if(r.note && r.note.trim()){
-    extraNote.style.display="block";
-    extraNote.textContent=`備註：${r.note.trim()}`;
-  }else{
-    extraNote.style.display="none";
-  }
-}
-
-/* ===== 事件：清單點選 / 刪除（事件委派） ===== */
-listBody.addEventListener('click',e=>{
-  const target = e.target;
-  if(!(target instanceof HTMLElement)) return;
-
-  const delIdx = target.getAttribute('data-del');
-  if(delIdx!=null){
-    const idx = Number(delIdx);
-    if(confirm('確定要刪除此筆回報？')){
-      store.records.splice(idx,1);
-      saveStore(store);
-      if(activeIndex===idx){ activeIndex=-1; msgText.value=''; pickedHint.textContent='尚未選取回報'; extraNote.style.display="none"; }
-      else if(activeIndex>idx){ activeIndex -= 1; }
-      renderList();
-      showToast('已刪除');
+    function renderMessages(){
+      const list=messageContainer,hint=emptyHint,q=search.value.toLowerCase().trim()
+      list.innerHTML=''
+      const filtered=messages.filter(msg=>!q||[msg.factory,msg.machine,msg.reason,msg.status,msg.note||''].join(' ').toLowerCase().includes(q))
+      hint.classList.toggle('hidden',filtered.length>0)
+      filtered.forEach((msg,i)=>{
+        const t=new Date(msg.timeISO)
+        const statusClass=msg.status==='已修復'?'bg-green-500':'bg-red-500'
+        const card=document.createElement('div')
+        card.className='bg-white border border-gray-200 rounded-2xl shadow p-4 sm:p-5'
+        card.innerHTML=`
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-lg sm:text-xl font-bold">${escapeHtml(msg.factory)} - ${escapeHtml(msg.machine)}</h3>
+                <span class="text-xs px-2 py-1 rounded text-white ${statusClass}">${escapeHtml(msg.status)}</span>
+              </div>
+              <div class="text-sm text-gray-700 mt-1">⚠️ ${escapeHtml(msg.reason)}</div>
+              <div class="text-xs text-gray-500 mt-1">🕒 ${formatForMessage(t)}</div>
+              ${msg.note?`<div class="text-sm text-gray-600 mt-2">📝 ${escapeHtml(msg.note)}</div>`:''}
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+              <button class="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white" data-action="copy" data-index="${i}">複製</button>
+              <button class="px-3 py-1.5 text-sm rounded bg-green-500 hover:bg-green-600 text-white" data-action="line" data-index="${i}">LINE</button>
+              <button class="px-3 py-1.5 text-sm rounded bg-gray-200 hover:bg-gray-300 text-gray-900" data-action="delete" data-index="${i}">刪除</button>
+            </div>
+          </div>`
+        list.appendChild(card)
+      })
+      list.querySelectorAll('button[data-action]').forEach(btn=>btn.addEventListener('click',cardAction))
     }
-    return;
-  }
 
-  const tr=target.closest('tr[data-row-index]');
-  if(!tr) return;
-  updateMessage(Number(tr.getAttribute('data-row-index')));
-  document.querySelector('.msgbox').scrollIntoView({behavior:'smooth',block:'start'});
-});
+    function cardAction(e){
+      const a=e.currentTarget.dataset.action
+      const i=+e.currentTarget.dataset.index
+      if(a==='copy') copyMsg(i)
+      if(a==='delete'){messages.splice(i,1);saveAndRender()}
+      if(a==='line') shareLine(i)
+    }
+    function copyMsg(i){
+      const m=messages[i]
+      const txt=`[${m.factory}-${m.machine}] ${m.reason} (${formatForMessage(new Date(m.timeISO))}) 狀態:${m.status}${m.note?'\n備註:'+m.note:''}`
+      navigator.clipboard.writeText(txt).then(()=>toast('已複製'))
+    }
+    function shareLine(i){
+      const m=messages[i]
+      const txt=`[${m.factory}-${m.machine}] ${m.reason} (${formatForMessage(new Date(m.timeISO))}) 狀態:${m.status}${m.note?'\n備註:'+m.note:''}`
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(txt)}`,'_blank')
+    }
+    function toast(msg){
+      const el=document.createElement('div')
+      el.textContent=msg
+      el.className='fixed left-1/2 -translate-x-1/2 bottom-6 bg-black text-white text-sm px-3 py-1.5 rounded-lg opacity-0 transition-opacity'
+      document.body.appendChild(el)
+      requestAnimationFrame(()=>el.classList.remove('opacity-0'))
+      setTimeout(()=>{el.classList.add('opacity-0');setTimeout(()=>el.remove(),300)},1200)
+    }
 
-/* ===== 事件：新增回報 ===== */
-document.getElementById("submit").addEventListener('click',()=>{
-  try{
-    const plant=document.querySelector('input[name="plant"]:checked')?.value || 'P5';
-    const machine=selM.value;
-    const reason = selR.disabled ? '' : selR.value;
-    const status = selS.value;
-    const time = faultTime.value || nowISO();
-    const note=document.getElementById("note").value.trim();
-
-    if(!machine){ showToast("請選擇機台"); return; }
-    if(selR.disabled || !reason){ showToast("此機台尚無故障原因，請先至管理頁新增"); return; }
-    if(!status){ showToast("請選擇處理狀況"); return; }
-
-    store.records.push({plant,machine,reason,status,time,note});
-    saveStore(store);
-    renderList();
-
-    // 重設（保留機台/原因/狀況選擇），時間回到現在、滑桿歸零、備註清空
-    faultTime.value = nowISO();
-    timeOffset.value = 0; offsetLabel.textContent = "±0 分";
-    document.getElementById("note").value = "";
-
-    showToast("已新增回報 ✔");
-  }catch(err){
-    showToast("發生錯誤，請重試");
-  }
-});
-
-/* ===== 表單重設 ===== */
-document.getElementById("resetForm").addEventListener('click',()=>{
-  document.querySelector('input[name="plant"][value="P5"]').checked=true;
-  faultTime.value = nowISO();
-  timeOffset.value = 0; offsetLabel.textContent = "±0 分";
-  document.getElementById("note").value="";
-  showToast("表單已清空");
-});
-
-/* ===== 下拉互動 ===== */
-selM.addEventListener('change', renderReasons);
-
-/* ===== 複製 / 清除訊息 ===== */
-document.getElementById("copyMsg").addEventListener('click', async ()=>{
-  copyHint.textContent="";
-  const text=msgText.value?.trim();
-  if(!text){ copyHint.textContent="尚未有可複製的訊息"; return; }
-  try{
-    await navigator.clipboard.writeText(text);
-    copyHint.textContent="已複製 ✔";
-    showToast("已複製到剪貼簿");
-  }catch(e){
-    msgText.removeAttribute('readonly'); msgText.focus(); msgText.select();
-    const ok=document.execCommand && document.execCommand('copy');
-    msgText.setAttribute('readonly','readonly');
-    copyHint.textContent= ok ? "已複製 ✔" : "複製失敗，請長按選取後複製";
-    if(ok) showToast("已複製到剪貼簿");
-  }
-});
-document.getElementById("clearMsg").addEventListener('click', ()=>{
-  msgText.value="";
-  pickedHint.textContent="尚未選取回報";
-  extraNote.style.display="none";
-});
-
-/* ===== 時間：滑動與快捷 ===== */
-function initNow(){
-  faultTime.value = nowISO();
-  timeOffset.value = 0;
-  offsetLabel.textContent = "±0 分";
-}
-document.querySelector('[data-now]').addEventListener('click', initNow);
-document.querySelectorAll('[data-add]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const delta = Number(btn.getAttribute('data-add'))||0;
-    const baseISO = faultTime.value || nowISO();
-    const newISO = addMinutesISO(baseISO, delta);
-    faultTime.value = newISO;
-    const diff = Math.round((new Date(newISO) - new Date(nowISO()))/60000);
-    const clipped = Math.max(-120, Math.min(120, diff));
-    timeOffset.value = clipped;
-    offsetLabel.textContent = (clipped>0?`+${clipped}`:clipped===0?'±0':String(clipped)) + " 分";
-  });
-});
-timeOffset.addEventListener('input', ()=>{
-  const offset = Number(timeOffset.value)||0;
-  faultTime.value = addMinutesISO(nowISO(), offset);
-  offsetLabel.textContent = (offset>0?`+${offset}`:offset===0?'±0':String(offset)) + " 分";
-});
-
-/* ===== 初始化 ===== */
-function init(){
-  initNow();
-  renderMachines();
-  renderStatuses();
-  renderList();
-}
-init();
-</script>
+    renderMessages()
+  </script>
 </body>
 </html>
